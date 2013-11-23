@@ -33,7 +33,6 @@
         </abbr>
 
 <p>In <a href="/category/category2.html">category2</a>. </p>
-<p>
 <!-- <p>tags: <a href="/tag/pelican.html">pelican</a><a href="/tag/publishing.html">publishing</a><a href="/tag/something3.html">something3</a></p> -->
 
 </footer><!-- /.post-info -->      <p>This is the second article.
@@ -204,10 +203,10 @@ This is the second article.
         </section><!-- /#extras -->
 
         <footer id="contentinfo" class="body">
-                 (set-thanks! (and (<a href="http://getpelican.com/">Pelican</a>)
-                (<a href="http://python.org">Python</a>)
-                (theme(<a href="http://coding.smashingmagazine.com/2009/08/04/designing-a-html-5-layout-from-scratch/">Smashing
-                Magazine</a>))))
+                 (map #("Thanks" ^ %) [<a href="http://getpelican.com/">'Pelican'</a>,
+                 <a href="http://python.org">'Python'</a>,
+                (theme(<a href="http://coding.smashingmagazine.com/2009/08/04/designing-a-html-5-layout-from-scratch/">'Smashing
+                Magazine'</a>))])
         </footer><!-- /#contentinfo -->
 
 </body>
