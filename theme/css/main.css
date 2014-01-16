@@ -33,12 +33,20 @@ nav a:hover {
 }
 
 nav {
-//  border: solid;
   color: #aaa;
   margin: 0 auto 2em auto;
   padding: 0;
-  text-align: right;
   font-family: inconsolata;
+  text-align: right;
+  display: inline;
+}
+
+a.title{
+  text-decoration: none;
+}
+
+header {
+  text-align: left;
 }
 
 nav ul{
