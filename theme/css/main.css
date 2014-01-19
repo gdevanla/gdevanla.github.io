@@ -61,7 +61,7 @@ body {
   margin: 2em auto 2em auto;
   text-align: center;
   background-color: white;
-  font: 14px inconsolata, helvetica, arial, clean, sans-serif;
+  font: 14px verdana, inconsolata, helvetica, arial, clean, sans-serif;
   *font-size: small;
   //border: solid;
 }
