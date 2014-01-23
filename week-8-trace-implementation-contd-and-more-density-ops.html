@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8" />
         <meta name="author" content="Guru Devanla">
-        <title>(*code*) - Tags</title>
+        <title>Week 8: Trace implementation contd. and more Density ops</title>
 
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
@@ -53,17 +53,47 @@
             </ul>
         </nav>
     </header><!-- /#banner -->
-
 <section id="content" class="body">
-    <h1>Tags for (*code*)</h1>        <li><a href="/tag/density.html">density</a> (1)</li>
-        <li><a href="/tag/gsoc-2012.html">GSoc 2012</a> (1)</li>
-        <li><a href="/tag/programming.html">programming</a> (1)</li>
-        <li><a href="/tag/quantum.html">quantum</a> (1)</li>
-        <li><a href="/tag/software.html">software</a> (1)</li>
-        <li><a href="/tag/sympy.html">sympy</a> (1)</li>
-        <li><a href="/tag/trace.html">trace</a> (1)</li>
-</section>
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/week-8-trace-implementation-contd-and-more-density-ops.html" rel="bookmark"
+           title="Permalink to Week 8: Trace implementation contd. and more Density ops">Week 8: Trace implementation contd. and more Density ops</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2012-07-16T04:14:00">
+                    16 Jul 2012
+                </abbr>
+                In <a href="/category/gsoc.html">GSoc</a>.       </div><!-- /.entry-content -->
 
+    </header>
+    <p>This week was primarily spent on 2 tasks. &nbsp;Getting some of the issues
+addressed in the currently pending <a class="reference external" href="https://github.com/sympy/sympy/pull/1396/">PR 1396</a>. Apart from work on this I
+have spent some testing some changes I had to make to implement the
+operations needed when Unitary operations are applied to Density
+operators.</p>
+<p>Some use cases I am currently working on for this are as follows:</p>
+<ol class="arabic simple">
+<li>Using basic kets/bras and generic UnitaryOperator</li>
+</ol>
+<p><a class="reference external" href="http://rhoforsympy.files.wordpress.com/2012/07/basiclandr.jpg"><img alt="image0" src="http://rhoforsympy.files.wordpress.com/2012/07/basiclandr.jpg" /></a></p>
+<ol class="arabic simple" start="2">
+<li>Apply Gates of Density operators with states as Qubits.</li>
+</ol>
+<p><a class="reference external" href="http://rhoforsympy.files.wordpress.com/2012/07/qapplylandr2.jpg"><img alt="image1" src="http://rhoforsympy.files.wordpress.com/2012/07/qapplylandr2.jpg" /></a></p>
+<p>Currently, qapply() works on &nbsp;UnitaryOpearator*Ket correctly. But, as
+seen in the second print statement Bra*Dagger(UnitaryOperator) does not
+expand out fully. I am currently working on fixing this so that the
+second part of the expression expands out smoothly.</p>
+<p>Therefore, my goal this week is to complete the implementation of
+UnitaryOperators applied to Density operators, plus address tasks for
+current PR and another PR ( related to partial trace on qubits) &nbsp;I plan
+to submit this week.</p>
+<p>Happy Coding!</p>
+
+
+
+  </article>
+</section>
     <footer>
         <hr>
         <div class="social">

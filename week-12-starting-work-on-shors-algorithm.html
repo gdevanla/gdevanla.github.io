@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8" />
         <meta name="author" content="Guru Devanla">
-        <title>(*code*) - pelican</title>
+        <title>Week 12 : Starting work on Shor's algorithm</title>
 
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
@@ -53,24 +53,61 @@
             </ul>
         </nav>
     </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/week-12-starting-work-on-shors-algorithm.html" rel="bookmark"
+           title="Permalink to Week 12 : Starting work on Shor's algorithm">Week 12 :  Starting work on Shor's algorithm</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2012-08-13T06:00:00">
+                    13 Aug 2012
+                </abbr>
+                In <a href="/category/gsoc.html">GSoc</a>.       </div><!-- /.entry-content -->
 
-<section>
-    <ul>
-               <li>
-                   <a href="/my-super-post-1.html">My first title</a>
-                   <span class='extra-info'><em>03 Dec 2010</em></span>
-               </li>
-               <li>
-                   <a href="/my-super-post-2.html">My second title</a>
-                   <span class='extra-info'><em>03 Dec 2010</em></span>
-               </li>
-               <li>
-                   <a href="/my-super-post-3.html">My third article</a>
-                   <span class='extra-info'><em>03 Dec 2010</em></span>
-               </li>
-    </ul>
+    </header>
+    <p>This has been a great 12 week run filled with learning and valuable
+experience! I believe I have accomplished most of what I had set out to
+do. &nbsp;The only other thing pending as far as proposed tasks goes is to
+relocate the Tr module. This would be based on decisions that needs to
+be taken by more experienced folks here! Once, the decision is made, I
+don't think this would take too much of my time. (I am estimating this
+based on the current approaches that have been proposed). &nbsp;Therefore, I
+am committed to getting this done even if this goes beyond GSoC pencils
+down deadline which is this week!</p>
+<p>So, that was all about the wrap up! So, what I am doing now?</p>
+<p>~.~.~.~.~~.~.~.~.~~.~.~.~.~~.~.~.~.~~.~.~.~.~~.~.~.~.~~.~.~.~.~~.~.~.~.~</p>
+<p>Looking forward, I have taken up another interesting task I am excited
+to work on. &nbsp;Past week I started working on implementing/completing
+Shor's algorithm. The 2 major activities that consumed my time this week
+were</p>
+<p>a) Understand Shor's algorithm in more detail to help me understand what
+is available in the current implementation.</p>
+<ol class="loweralpha simple" start="2">
+<li>Review the current implementation and plan on next steps.</li>
+</ol>
+<p>After reviewing the current implementation, I have decided to approach
+this task with the following smaller tasks:</p>
+<p>a) Review and complete the implementation of <strong>*QFT gate*</strong> ( include
+tests, documentation), so that it can work independent of Shor's
+algorithm.</p>
+<p>b) Review and complete the implementation of <strong>*CMOD gate*</strong>. Right now,
+the implementation is not complete, and needs more tests too. This is
+the set of gates that would do the &nbsp;|a mod N&gt; * |state&gt; over 2^j
+times for j = { 0, 1, ....2^(n-1)}</p>
+<p>c) Put this all together and re-factor the current implementation
+(especially break down current <strong>*period_find*()</strong> ) to help more
+detail testing.</p>
+<p>d) Also, I plan to provide a argument to shor() method, to work as a
+<em>flag</em> to turn on detail logging as the circuit progresses.</p>
+<p>All the code I am currenly reviewing and planning to work on are
+available on the master branch even though it is not complete.</p>
+<p>Happy coding!</p>
+
+
+
+  </article>
 </section>
-
     <footer>
         <hr>
         <div class="social">

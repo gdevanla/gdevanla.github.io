@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8" />
         <meta name="author" content="Guru Devanla">
-        <title>(*code*) - Tags</title>
+        <title>Week 6 : Tr implementation contd...</title>
 
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
@@ -53,17 +53,62 @@
             </ul>
         </nav>
     </header><!-- /#banner -->
-
 <section id="content" class="body">
-    <h1>Tags for (*code*)</h1>        <li><a href="/tag/density.html">density</a> (1)</li>
-        <li><a href="/tag/gsoc-2012.html">GSoc 2012</a> (1)</li>
-        <li><a href="/tag/programming.html">programming</a> (1)</li>
-        <li><a href="/tag/quantum.html">quantum</a> (1)</li>
-        <li><a href="/tag/software.html">software</a> (1)</li>
-        <li><a href="/tag/sympy.html">sympy</a> (1)</li>
-        <li><a href="/tag/trace.html">trace</a> (1)</li>
-</section>
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/week-6-tr-implementation-contd.html" rel="bookmark"
+           title="Permalink to Week 6 : Tr implementation contd...">Week 6 : Tr implementation contd...</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2012-07-01T23:39:00">
+                    01 Jul 2012
+                </abbr>
+                In <a href="/category/gsoc.html">GSOC</a>.       </div><!-- /.entry-content -->
 
+    </header>
+    <p>This week I continued to work on the Tr operator and the related code
+needed for partial trace operations. &nbsp;Following up with the list of
+tasks I had listed out for this week, I got the following items
+accomplished this week.</p>
+<ol class="arabic simple">
+<li>PR 1333 merged</li>
+<li>Submitted <a class="reference external" href="https://github.com/sympy/sympy/pull/1396">PR&nbsp;1396</a>&nbsp; for review :</li>
+</ol>
+<p>This PR has the following changes:</p>
+<p>1. Printing ( default, latex and pretty). &nbsp;The current output does not
+display the indices. &nbsp;I would like some input on this from the reviewers
+on how to incorporate the information on indices into the output.</p>
+<p>2. Handles indices in the constructor of Density class and related
+methods.</p>
+<ol class="arabic simple" start="3">
+<li>Handle partial trace operations especially wrt to Density operators.</li>
+<li>Notebook example, some of which are listed below:</li>
+</ol>
+<p><a class="reference external" href="http://rhoforsympy.files.wordpress.com/2012/07/tr_examp1.jpg"><img alt="image0" src="http://rhoforsympy.files.wordpress.com/2012/07/tr_examp1.jpg" /></a></p>
+<p>The activities I have in mind for next week are as follows.</p>
+<ol class="arabic simple">
+<li>&nbsp;Address review comments on latest PR.</li>
+</ol>
+<p>2. &nbsp;Complete the test cases for existing partial trace implementation
+for Qubits. My plan is to get this changes merged with the current PR.
+This should happen by Tuesday.</p>
+<p>With these 2 activities, I believe most of what is needed for Tr and
+density matrices could be considered complete. Again, I expect
+&nbsp;<a class="reference external" href="https://github.com/ellisonbg">&#64;ellisonbg</a>&nbsp;and&nbsp;<a class="reference external" href="https://github.com/flacjacket">&#64;flacjacket</a>&nbsp;to provide some input on this.
+&nbsp;Assuming, this is true, then I plan to start looking at</p>
+<ol class="arabic simple" start="3">
+<li>qapply() method to incorporate density op L and R operations.</li>
+</ol>
+<p>Aside:</p>
+<p>BTW, for Emacs lovers and who love IPython Notebook, there is <a class="reference external" href="http://tkf.github.com/emacs-ipython-notebook/">IPython
+notebook for&nbsp;Emacs</a> now. I have not tried this yet, &nbsp;but&nbsp;I plan to try
+this out this week and post my experience.</p>
+<p>Happy coding!</p>
+
+
+
+  </article>
+</section>
     <footer>
         <hr>
         <div class="social">

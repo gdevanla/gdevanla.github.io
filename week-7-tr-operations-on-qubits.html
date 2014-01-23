@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8" />
         <meta name="author" content="Guru Devanla">
-        <title>(*code*) - Tags</title>
+        <title>Week 7: Tr operations on Qubits</title>
 
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
@@ -53,17 +53,52 @@
             </ul>
         </nav>
     </header><!-- /#banner -->
-
 <section id="content" class="body">
-    <h1>Tags for (*code*)</h1>        <li><a href="/tag/density.html">density</a> (1)</li>
-        <li><a href="/tag/gsoc-2012.html">GSoc 2012</a> (1)</li>
-        <li><a href="/tag/programming.html">programming</a> (1)</li>
-        <li><a href="/tag/quantum.html">quantum</a> (1)</li>
-        <li><a href="/tag/software.html">software</a> (1)</li>
-        <li><a href="/tag/sympy.html">sympy</a> (1)</li>
-        <li><a href="/tag/trace.html">trace</a> (1)</li>
-</section>
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/week-7-tr-operations-on-qubits.html" rel="bookmark"
+           title="Permalink to Week 7: Tr operations on Qubits">Week 7: Tr operations on Qubits</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2012-07-09T01:13:00">
+                    09 Jul 2012
+                </abbr>
+                In <a href="/category/gsoc.html">GSoc</a>.       </div><!-- /.entry-content -->
 
+    </header>
+    <p>This week has been lot less coding and more of understanding some pieces
+of codes for next set of changes. As far as the implementation goes, the
+Tr operations ( including partial trace/reduce density operations) for
+qubits was implemented.</p>
+<p>Some examples of the Tr operations on qubits can be seen here.</p>
+<p><a class="reference external" href="http://rhoforsympy.files.wordpress.com/2012/07/tr_qubit_1.jpg"><img alt="image0" src="http://rhoforsympy.files.wordpress.com/2012/07/tr_qubit_1.jpg" /></a></p>
+<p>An example of an reduced density operation on a mixed-state is shown
+below</p>
+<p><a class="reference external" href="http://rhoforsympy.files.wordpress.com/2012/07/tr_qubit_2.jpg"><img alt="image1" src="http://rhoforsympy.files.wordpress.com/2012/07/tr_qubit_2.jpg" /></a></p>
+<p>The changes shown above are currently available in my git branch over
+<a class="reference external" href="https://github.com/gdevanla/sympy/tree/trace_qubit">here</a>. I plan to submit a PR of this branch as soon as the my current
+<a class="reference external" href="https://github.com/sympy/sympy/pull/1396/">PR&nbsp;1396</a>&nbsp;is merged.</p>
+<p>Another task I have been working on this week is figuring changes needed
+to qapply() to perform the L and R operations of density matrix. I plan
+to work on this tasks during next week.</p>
+<p>In summary, plan for next week:</p>
+<ol class="arabic simple">
+<li>Address comments on current <a class="reference external" href="https://github.com/sympy/sympy/pull/1396/">PR 1396</a>.</li>
+<li>Submit PR for trace_qubit branch and address any reviews on that.</li>
+<li>Work on the L and R operations.</li>
+</ol>
+<p>With these activities, the next major task that would remain is to set
+up trace operations for Time Dependent states. &nbsp;I will start researching
+on the current implementation of this code to understand where my
+changes would have to go.</p>
+<p>On a side note, we are breaking record <a class="reference external" href="http://www.chicagotribune.com/news/chi-120707chicago-heat-weather,0,3439069.story">temperatures</a> in Chicago this
+week, and it was tough to keep myself cool without an air-conditioner!
+&nbsp;Hope other&nbsp;Chicagoan Sympy members are doing just fine by the beach!</p>
+
+
+
+  </article>
+</section>
     <footer>
         <hr>
         <div class="social">

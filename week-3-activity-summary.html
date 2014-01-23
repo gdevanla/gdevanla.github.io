@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8" />
         <meta name="author" content="Guru Devanla">
-        <title>(*code*) - Tags</title>
+        <title>Week 3: Activity Summary</title>
 
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
@@ -53,17 +53,59 @@
             </ul>
         </nav>
     </header><!-- /#banner -->
-
 <section id="content" class="body">
-    <h1>Tags for (*code*)</h1>        <li><a href="/tag/density.html">density</a> (1)</li>
-        <li><a href="/tag/gsoc-2012.html">GSoc 2012</a> (1)</li>
-        <li><a href="/tag/programming.html">programming</a> (1)</li>
-        <li><a href="/tag/quantum.html">quantum</a> (1)</li>
-        <li><a href="/tag/software.html">software</a> (1)</li>
-        <li><a href="/tag/sympy.html">sympy</a> (1)</li>
-        <li><a href="/tag/trace.html">trace</a> (1)</li>
-</section>
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/week-3-activity-summary.html" rel="bookmark"
+           title="Permalink to Week 3: Activity Summary">Week 3: Activity Summary</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2012-06-10T04:30:00">
+                    10 Jun 2012
+                </abbr>
+                In <a href="/category/gsoc.html">GSoc</a>.       </div><!-- /.entry-content -->
 
+    </header>
+    <p>My week started with some design discussion with my mentors
+<a class="reference external" href="https://github.com/ellisonbg">&#64;ellisonbg</a> and <a class="reference external" href="https://github.com/flacjacket">&#64;flacjacket</a>. &nbsp;We had a preliminary discussion on
+how we should go about implementing the Tr (trace) operator.</p>
+<p>Based on the preliminary discussion, I submitted a <a class="reference external" href="https://github.com/sympy/sympy/pull/1333">PR 1333</a>&nbsp;purely for
+review and got some useful comments. I went back to work and addressed
+almost all the comments/suggested provided and I have updated the PR
+with my new changes.</p>
+<p>As it stands now, the current&nbsp;<a class="reference external" href="https://github.com/sympy/sympy/pull/1333">PR 1333</a>&nbsp;has the basic functionality
+needed for Tr operation. This version still does not handle reduced
+trace operations and also does not use any options passed through
+**kwargs. &nbsp;Even, printing will have to be fixed. But, barring any
+major issues after few more iterations the coming week I am confident
+this PR can be merged.</p>
+<p>So, assuming I will not be adding any more features to the PR, my plan
+for next week is make sure this PR gets accepted. &nbsp;Since, I am at the
+summer school next week, I may not be doing any other new coding
+activity. So, my minimal goal is to make sure this PR is merged by end
+of next week.</p>
+<p>I plan to branch out of this PR, to work on the following activities
+during next 2 weeks(mostly week after):</p>
+<p>1. Fix printing for Tr operator. Currently, the printing is pretty
+crude. I will also add examples for Notebook along with this task.</p>
+<p>2. Fix the is_number operation ( based on what&nbsp;suggestions&nbsp;I get). I am
+still to understand what &quot;is_number&quot; means to sympy and what scenarios
+Tr needs to handle. &nbsp;I need to work on this property, since this
+property is called from the base classes for when 2 Tr objects are added
+through Add(*[Tr(args,indices)]) operation.</p>
+<ol class="arabic simple" start="3">
+<li>Integrate currently existing Qubit logic for partial trace operation.</li>
+</ol>
+<p>The above 3 tasks should go into the next PR.</p>
+<p>4. Meanwhile, I would like to chat with my mentors and about all use
+cases (general/special) that we will have to address to TensorProducts
+wrt to density operators and eventually partial trace operations.</p>
+<p>Edit 1: Update (1) to include Notebook.</p>
+
+
+
+  </article>
+</section>
     <footer>
         <hr>
         <div class="social">

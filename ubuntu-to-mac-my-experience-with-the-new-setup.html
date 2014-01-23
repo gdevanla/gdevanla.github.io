@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8" />
         <meta name="author" content="Guru Devanla">
-        <title>(*code*) - publishing</title>
+        <title>Ubuntu to Mac - My experience with the new setup</title>
 
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
@@ -53,24 +53,71 @@
             </ul>
         </nav>
     </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/ubuntu-to-mac-my-experience-with-the-new-setup.html" rel="bookmark"
+           title="Permalink to Ubuntu to Mac - My experience with the new setup">Ubuntu to Mac - My experience with the new setup</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2012-09-09T11:29:00">
+                    09 Sep 2012
+                </abbr>
+                In <a href="/category/programming.html">Programming</a>.       </div><!-- /.entry-content -->
 
-<section>
-    <ul>
-               <li>
-                   <a href="/my-super-post-1.html">My first title</a>
-                   <span class='extra-info'><em>03 Dec 2010</em></span>
-               </li>
-               <li>
-                   <a href="/my-super-post-2.html">My second title</a>
-                   <span class='extra-info'><em>03 Dec 2010</em></span>
-               </li>
-               <li>
-                   <a href="/my-super-post-3.html">My third article</a>
-                   <span class='extra-info'><em>03 Dec 2010</em></span>
-               </li>
-    </ul>
+    </header>
+    <p>Recently I had an opportunity to get my hands dirty on a Mac based
+development environment. I have done most of my development on Ubuntu
+and getting to work on Mac was a mixed experience. As anyone would have
+guessed the overall UI experience has been great.</p>
+<p>Here are some of the tools I was introduced to during my first week:</p>
+<p>1. SQLPro : This is a nice GUI based MySQL client. I was never impressed
+with the command line MySql client. I hated it all the more once I
+started using Postgress and the accompanying client. If you have used
+Golden for Oracle it is on par with that tool.</p>
+<p>2. iTerm2: This is the tmux equivalent and tuned towards the Mac UI
+experience. The key bindings are easy to learn and worth spending time
+getting used to the keyboard shortcuts.</p>
+<p>3. Homebrew: This is the Ubuntu equivalent of apt-get. Other options
+include MacPorts and Fink. I am yet to familiarize myself with the
+differences between the options.</p>
+<p>4. Alfred: This is a quick launch app which helps you launch
+applications using Cmd-Space shortcut. This is equivalent to Alt-F2 on
+Ubuntu.</p>
+<p>5. PyCharm : This is not Mac specific, but this tool has been handy in
+helping me step through code and understand the implementation as I
+debug.</p>
+<div class="line-block">
+<div class="line">6. Emacs on Mac : The biggest challenge I had was trying to set up</div>
+</div>
+<div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/ubuntu-to-mac-my-experience-with-the-new-setup.rst</tt>, line 38)</p>
+Line block ends without a blank line.</div>
+<p>Emacs to reflect my set up on Ubuntu. 'Monaco' is the usual font used in
+most of Mac applications. But, the GUI version of Emacs just does not
+render Monaco-11 or Monaco-12 in anti-aliased mode.Turning on/off
+anti-aliasing did not help either. Doing anything in a font bigger than
+that was very painful. Finally, I settled into to using the non
+gui-version of Emacs-24. I just had to create an alias called emacs24
+and make it point to the Emacs app with the non-Gui option. Here is the
+instruction you will need to follow, if you had the same experience.
+|  a. Install the Emacs-24.x version.
+|  b. Add this line to your bash_profile.</p>
+<p>alias emacs=&quot;/Applications/Emacs.app/Contents/MacOS/Emacs -nw&quot;</p>
+<ol class="loweralpha simple" start="3">
+<li>And, happily run Emacs with the beautiful fonts rendered by iTerm2.</li>
+</ol>
+<p>This option also helps you open Emacs within one of the sessions in
+iTerm2. That way you can remain working on the terminals without the
+need to switch windows.</p>
+<p>There are some new Python tools I have started working in lately, and
+that will be the topic of my next post.</p>
+<p>Happy Coding!</p>
+
+
+
+  </article>
 </section>
-
     <footer>
         <hr>
         <div class="social">
