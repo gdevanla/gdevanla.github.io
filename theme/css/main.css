@@ -77,6 +77,10 @@ section {
   text-align: justify;
 }
 
+section li {
+  line-height:150%
+}
+
 footer, footer a {
 //  border: solid;
   margin: 0 auto 2em auto;
