@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8" />
         <meta name="author" content="Guru Devanla">
-        <title>(*code*) - Guru Devanla</title>
+        <title>Using Soot to obtain def-use chains - A Simple Example</title>
 
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
@@ -53,20 +53,49 @@
             </ul>
         </nav>
     </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/soot-cfg-def-use-chain.html" rel="bookmark"
+           title="Permalink to Using Soot to obtain def-use chains - A Simple Example">Using Soot to obtain def-use chains - A Simple Example</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2014-03-08T07:37:20">
+                    08 Mar 2014
+                </abbr>
+                In <a href="/category/programming-static-analysis-research.html">programming, static analysis, research</a>.       </div><!-- /.entry-content -->
 
-<section>
-    <ul>
-               <li>
-                   <a href="/soot-cfg-def-use-chain.html">Using Soot to obtain def-use chains - A Simple Example</a>
-                   <span class='extra-info'><em>08 Mar 2014</em></span>
-               </li>
-               <li>
-                   <a href="/y-combinator-with-clojure.html">Y-Combinator with Clojure</a>
-                   <span class='extra-info'><em>23 Feb 2014</em></span>
-               </li>
-    </ul>
+    </header>
+    <p><a href="http://">Soot</a> provides very powerful framework to perform different kinds of analysis on JVM byte code.
+This post has a simple example on how to use Soot to obtain def-use chains in a given method.
+You need to be familiar with Soot in general and some terms of static analysis to follow this example.</p>
+<p>Here is the simple example</p>
+<div class="highlight"><pre><span class="n">UnitGraph</span> <span class="n">unitGraph</span>  <span class="o">=</span> <span class="k">new</span> <span class="n">EnhancedUnitGraph</span><span class="o">(</span><span class="n">body</span><span class="o">)</span>
+<span class="n">SimpleLocalDefs</span> <span class="n">simpleLocalDefs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SimpleLocalDefs</span><span class="o">(</span><span class="n">unitGraph</span><span class="o">)</span>
+
+<span class="c1">//now say `u` is a variable pointing to a unit and we</span>
+<span class="c1">//and `l` is a one of the locals used in `u`</span>
+<span class="c1">//then we can use the following statement to obtain</span>
+<span class="c1">//all defs of `l` reachable from `u`</span>
+<span class="n">List</span><span class="o">&lt;</span><span class="n">Unit</span><span class="o">&gt;</span> <span class="n">defUnits</span> <span class="o">=</span> <span class="n">simpleLocalDefs</span><span class="o">.</span><span class="na">getDefsOfAt</span><span class="o">(</span><span class="n">l</span><span class="o">,</span> <span class="n">u</span><span class="o">)</span>
+
+<span class="c1">//note that a local `l` at `u` could have more than one</span>
+<span class="c1">//def since the different def statements could be reached</span>
+<span class="c1">//based on conditional constructs.</span>
+</pre></div>
+
+
+<p>We add this code in the <code>internalTransform()</code> function.</p>
+<p>First step is to build a <a href="http://www.sable.mcgill.ca/soot/doc/soot/toolkits/graph/UnitGraph.html"><code>UnitGraph</code></a>.
+There are different ways to build this object. Depending on how much details the graph needs to include.</p>
+<p><code>UnitGraph unitGraph = new EnhancedUnitGraph(body)</code></p>
+<p>Other version of <code>UnitGraph</code> would be <code>BriefUnitGraph</code>, <code>EnhancedUnitGraph</code>, <code>ExceptionalUnitGraph</code> and <code>TrapUnitGraph</code>.</p>
+<p>Second step is to build the SimpleLocalDefs object.</p>
+<p>And finally, we can use <code>simpleLocalDefs.getDefsOfAt(Local, Unit)to gets all reaching defintions of local</code>l<code>at unit</code>u<code>. Other option would be to use</code>SmartLocalDefs`. But, I believe it is computationally more expensive in how analysis is performed.</p>
+
+
+  </article>
 </section>
-
     <footer>
         <hr>
         <div class="social">
