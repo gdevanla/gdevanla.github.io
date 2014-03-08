@@ -60,7 +60,7 @@
         <a class="title" href="/soot-cfg-def-use-chain.html" rel="bookmark"
            title="Permalink to Using Soot to obtain def-use chains - A Simple Example">Using Soot to obtain def-use chains - A Simple Example</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2014-03-08T08:02:21">
+                <abbr class="published" title="2014-03-08T08:02:56">
                     08 Mar 2014
                 </abbr>
                 In <a href="/category/programming-static-analysis-research.html">programming, static analysis, research</a>.       </div><!-- /.entry-content -->
@@ -87,7 +87,7 @@ You need to be familiar with Soot in general and some terms of static analysis t
 
 <p>We add this code in the <code>internalTransform()</code> function.</p>
 <p>First step is to build a <a href="http://www.sable.mcgill.ca/soot/doc/soot/toolkits/graph/UnitGraph.html"><code>UnitGraph</code></a>.
-There are different ways to build this object. Depending on how much details the graph needs to include.</p>
+There are different ways to build this object depending on how much details the graph needs to include.</p>
 <p><code>UnitGraph unitGraph = new EnhancedUnitGraph(body)</code></p>
 <p>Other version of <code>UnitGraph</code> would be <code>BriefUnitGraph</code>, <code>EnhancedUnitGraph</code>, <code>ExceptionalUnitGraph</code> and <code>TrapUnitGraph</code>.</p>
 <p>Second step is to build the SimpleLocalDefs object.</p>
