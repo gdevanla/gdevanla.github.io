@@ -60,7 +60,7 @@
         <a class="title" href="/soot-cfg-def-use-chain.html" rel="bookmark"
            title="Permalink to Using Soot to obtain def-use chains - A Simple Example">Using Soot to obtain def-use chains - A Simple Example</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2014-03-08T07:37:20">
+                <abbr class="published" title="2014-03-08T07:58:45">
                     08 Mar 2014
                 </abbr>
                 In <a href="/category/programming-static-analysis-research.html">programming, static analysis, research</a>.       </div><!-- /.entry-content -->
@@ -73,9 +73,9 @@ You need to be familiar with Soot in general and some terms of static analysis t
 <div class="highlight"><pre><span class="n">UnitGraph</span> <span class="n">unitGraph</span>  <span class="o">=</span> <span class="k">new</span> <span class="n">EnhancedUnitGraph</span><span class="o">(</span><span class="n">body</span><span class="o">)</span>
 <span class="n">SimpleLocalDefs</span> <span class="n">simpleLocalDefs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SimpleLocalDefs</span><span class="o">(</span><span class="n">unitGraph</span><span class="o">)</span>
 
-<span class="c1">//now say `u` is a variable pointing to a unit and we</span>
-<span class="c1">//and `l` is a one of the locals used in `u`</span>
-<span class="c1">//then we can use the following statement to obtain</span>
+<span class="c1">//now say `u` is a variable pointing to a unit</span>
+<span class="c1">//and `l` is a one of the locals used in `u`.</span>
+<span class="c1">//Then we can use the following statement to obtain</span>
 <span class="c1">//all defs of `l` reachable from `u`</span>
 <span class="n">List</span><span class="o">&lt;</span><span class="n">Unit</span><span class="o">&gt;</span> <span class="n">defUnits</span> <span class="o">=</span> <span class="n">simpleLocalDefs</span><span class="o">.</span><span class="na">getDefsOfAt</span><span class="o">(</span><span class="n">l</span><span class="o">,</span> <span class="n">u</span><span class="o">)</span>
 
