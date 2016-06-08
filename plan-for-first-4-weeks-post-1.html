@@ -44,7 +44,7 @@
 
 <body>
     <header>
-        <span><a class="title" href="/index.html"><h1>*code*</h1></a></span>
+        <span><a class="title" href="/index.html"><h1>blog <| code </h1></a></span>
         <nav>
             <ul>
                     <li><a href="/index.html">posts</a></li>
@@ -60,39 +60,23 @@
         <a class="title" href="/plan-for-first-4-weeks-post-1.html" rel="bookmark"
            title="Permalink to Plan for first 4 weeks : Post 1">Plan for first 4 weeks : Post 1</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2012-05-15T23:42:00">
-                    15 May 2012
+                <abbr class="published" title="2012-05-15T23:42:00-07:00">
+                    15 05 2012
                 </abbr>
                 In <a href="/category/gsoc.html">GSoc</a>.       </div><!-- /.entry-content -->
 
     </header>
     <div class="line-block">
-<div class="line">As part of first set of steps (first 4 weeks) in the project plan, my</div>
+<div class="line">As part of first set of steps (first 4 weeks) in the project plan, my initial proposal was to achieve the following specific goals:</div>
 </div>
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/plan-for-first-4-weeks-post-1.rst</tt>, line 9)</p>
-Line block ends without a blank line.</div>
-<p>initial proposal was to achieve the following specific goals:
-|  (These goals are listed also with respect using the current
-implementation of density operators at this branch: <a class="reference external" href="https://github.com/ellisonbg/sympy/commit/d43f10bd899b5e4dcd75876a1b6a9e82333e0f57">densityOp branch at
-ellisongb&#64;github</a></p>
-<ul>
-<li><dl class="first docutils">
-<dt>Start with density.py</dt>
-<dd><p class="first last">Make it work with different bases by aligning the current</p>
-</dd>
-</dl>
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/plan-for-first-4-weeks-post-1.rst</tt>, line 16)</p>
-<p>Definition list ends without a blank line; unexpected unindent.</p>
+<div class="line-block">
+<div class="line">(These goals are listed also with respect using the current implementation of density operators at this branch: <cite>densityOp branch at ellisongb&#64;github</cite></div>
 </div>
-<p>implementation with representation logic.</p>
-</li>
-<li><p class="first">Come up with an proposal/implementation for density matrices specific
-to qubits. ( Do we need a specific version for qubits? )</p>
-</li>
-<li><p class="first">Update TensorProduct.py for multi-qubit states.</p>
-</li>
+<ul class="simple">
+<li>Start with density.py
+Make it work with different bases by aligning the current implementation with representation logic.</li>
+<li>Come up with an proposal/implementation for density matrices specific to qubits. ( Do we need a specific version for qubits? )</li>
+<li>Update TensorProduct.py for multi-qubit states.</li>
 </ul>
 <p>The above tasks currently has been planned for the first 4 weeks of the
 project. For each of the above tasks, I will provide 2 sections in this
@@ -103,19 +87,10 @@ implementation idea).</p>
 <div class="section" id="what-is-currently-available-in-density-py-from-the-above-git-branch">
 <h2>What is currently available in Density.py? ( from the above git branch)</h2>
 <ul>
-<li><dl class="first docutils">
-<dt>Currently, density.py has the basic function prototypes.</dt>
-<dd><p class="first last">The current density object accepts any kind of input. That is, there</p>
-</dd>
-</dl>
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/plan-for-first-4-weeks-post-1.rst</tt>, line 33)</p>
-<p>Definition list ends without a blank line; unexpected unindent.</p>
-</div>
-<p>is no restriction on objects to be strictly of type 'State' or 'Ket'.</p>
+<li><p class="first">Currently, density.py has the basic function prototypes.
+The current density object accepts any kind of input. That is, there is no restriction on objects to be strictly of type 'State' or 'Ket'.</p>
 </li>
-<li><p class="first">Also, when we use Qubit's as argument to the density object, what
-gets printed is not accurate. For example,</p>
+<li><p class="first">Also, when we use Qubit's as argument to the density object, what gets printed is not accurate. For example,</p>
 </li>
 <li><p class="first"><img alt="Example of output for Density" src="https://rhoforsympy.files.wordpress.com/2012/05/screenshot-2.png" /></p>
 </p></li>
@@ -128,37 +103,21 @@ gets printed is not accurate. For example,</p>
 <ul>
 <li><dl class="first docutils">
 <dt>Add eval() function</dt>
-<dd><p class="first last">Validate the arguments passed to the constructor. Only instances of</p>
-</dd>
-<dt>type 'State' will be accepted.</dt>
-<dd><p class="first last">If any QExpr is passed as argument, then QExpr will have to be</p>
+<dd><p class="first last">Validate the arguments passed to the constructor. Only instances of type 'State' will be accepted.
+If any QExpr is passed as argument, then QExpr will have to be simplified and checked if final QExpr object is an instance of type 'State'. Alternatively, we could just check if passed states are of type 'Ket'. This step takes care of creation of density matrices.</p>
 </dd>
 </dl>
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/plan-for-first-4-weeks-post-1.rst</tt>, line 51)</p>
-<p>Definition list ends without a blank line; unexpected unindent.</p>
-</div>
-<p>simplified and checked if final QExpr object is an instance of type
-'State'. Alternatively, we could just check if passed states are of
-type 'Ket'. This step takes care of creation of density matrices.</p>
 </li>
 <li><p class="first">Update doit() : The current implementation currently errors out. We
 will work on this to fix it.</p>
 </li>
 <li><div class="first line-block">
-<div class="line">Update _represent() : The current implementation errors out. Also,</div>
+<div class="line">Update _represent() : The current implementation errors out. Also, the current implementation expands the density operator (thus producing the matrix) before the original represent() method is invoked. The approach, we plan to take is call the represent method for each of the states in the density op.</div>
+<div class="line">Say, Density([ ket1,p1 ] , [ket2, p2], [ket3,p3] ), then would way do change of basis using represent would be to do the following:</div>
+<div class="line-block">
+<div class="line">(the following code, is just pseudo-code)</div>
 </div>
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/plan-for-first-4-weeks-post-1.rst</tt>, line 57)</p>
-<p>Line block ends without a blank line.</p>
 </div>
-<p>the current implementation expands the density operator (thus
-producing the matrix) before the original represent() method is
-invoked. The approach, we plan to take is call the represent method
-for each of the states in the density op.
-|  Say, Density([ ket1,p1 ] , [ket2, p2], [ket3,p3] ), then would way
-do change of basis using represent would be to do the following:
-|  (the following code, is just pseudo-code)</p>
 </p><div class="line-block">
 <div class="line">[sourcecode language=&quot;python&quot;]</div>
 <div class="line-block">
@@ -203,18 +162,7 @@ the specific week for corresponding task.</p>
         </div><!-- /.social -->
 
 
-<!-- 
-    <script type="text/javascript">
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-45968778-1']);
-    _gaq.push(['_trackPageview']);
-    (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
-    </script>
- -->
+<!--  -->
 
 </body>
 </html>

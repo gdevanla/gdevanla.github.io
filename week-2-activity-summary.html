@@ -44,7 +44,7 @@
 
 <body>
     <header>
-        <span><a class="title" href="/index.html"><h1>*code*</h1></a></span>
+        <span><a class="title" href="/index.html"><h1>blog <| code </h1></a></span>
         <nav>
             <ul>
                     <li><a href="/index.html">posts</a></li>
@@ -60,8 +60,8 @@
         <a class="title" href="/week-2-activity-summary.html" rel="bookmark"
            title="Permalink to Week 2: Activity Summary">Week 2: Activity Summary</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2012-06-02T13:30:00">
-                    02 Jun 2012
+                <abbr class="published" title="2012-06-02T13:30:00-07:00">
+                    02 06 2012
                 </abbr>
                 In <a href="/category/gsoc.html">GSoc</a>.       </div><!-- /.entry-content -->
 
@@ -75,27 +75,13 @@ on previous PR . I have provided a detailed plan below.</p>
 <div class="section" id="tasks-performed-this-week">
 <h2>Tasks performed this week</h2>
 <div class="line-block">
-<div class="line">1. &nbsp;Responded to and completed all comments on last weeks pull</div>
+<div class="line">1. Responded to and completed all comments on last weeks pull <cite>PR1312.</cite></div>
+<div class="line">2. Pushed a minor code change branch to my git account. This change handles <strong>entropy for general density operators</strong>. &nbsp;(<em>I am still waiting for the previous pull request to get merged, since this pull request was branched off that</em>).</div>
+<div class="line">3. Review and understand the partial trace operations and qubit related implementation. &nbsp;Further notes will be prepared for the discussion.</div>
+<div class="line-block">
+<div class="line">4. Understand current implementation of tensor products to plan work for coming weeks.</div>
 </div>
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/week-2-activity-summary.rst</tt>, line 19)</p>
-Line block ends without a blank line.</div>
-<p><a class="reference external" href="https://github.com/sympy/sympy/pull/1312">PR1312.</a>
-|  2. &nbsp;Pushed a minor code change branch to my git account. This change
-handles <strong>entropy for general density operators</strong>. &nbsp;(<a href="#id1"><span class="problematic" id="id2">*</span></a>I am still waiting
-for the previous pull request to get merged, since this pull request was
-branched off that.)
-<a href="#id3"><span class="problematic" id="id4">*</span></a>3. &nbsp;Review and understand the partial trace operations and qubit
-related implementation. &nbsp;Further notes will be prepared for the
-discussion.
-|  4. Understand current implementation of tensor products to plan work
-for coming weeks.</p>
-<div class="system-message" id="id1">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/week-2-activity-summary.rst</tt>, line 19); <em><a href="#id2">backlink</a></em></p>
-Inline emphasis start-string without end-string.</div>
-<div class="system-message" id="id3">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/week-2-activity-summary.rst</tt>, line 19); <em><a href="#id4">backlink</a></em></p>
-Inline emphasis start-string without end-string.</div>
+</div>
 </div>
 <div class="section" id="my-plan-for-weeks-3-4-5-6-based-on-design-discussion-we-have-had-regarding-partial-trace">
 <h2>My plan for weeks 3,4,5,6 ( based on design discussion we have had regarding partial trace )</h2>
@@ -108,20 +94,13 @@ the work to not flow into later weeks).&nbsp;</em></p>
 <p>Implement/test partial trace methods [ <strong>_eval_partial_trace</strong> ] and
 other required methods for following classes:</p>
 <div class="line-block">
-<div class="line">QubitDensity (<em>name suggestion needed!</em>) : for this I will use the</div>
+<div class="line">QubitDensity (<em>name suggestion needed!</em>) : for this I will use the current bit-twiddling algorithm but add detailed test cases.</div>
+<div class="line">TensorProduct : Code to handle density operators ( both qubit based and generic) during expand, mul operations.</div>
+<div class="line">TensorProduct : _eval_partial_trace method will split the sub-system to trace. and then based on states inside Tr(|i&gt;&lt;k|).&nbsp;[<em>This needs more discussions during the next few days and during IRC session.</em>]</div>
+<div class="line-block">
+<div class="line">Sub-classes of 'State' : Need to decide which subclasses need and how it should be done.</div>
 </div>
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">/Users/gdevanla/myblog/content/week-2-activity-summary.rst</tt>, line 45)</p>
-Line block ends without a blank line.</div>
-<p>current bit-twiddling algorithm but add detailed test cases.
-|  TensorProduct : Code to handle density operators ( both qubit based,
-and generic) during expand, mul operations.
-|  TensorProduct : _eval_partial_trace method will split the
-sub-system to trace. and then based on states inside Tr(|i&gt;&lt;k|).&nbsp;&nbsp;[
-<em>This needs more discussions during the next few days and during IRC
-session.</em>]
-|  Sub-classes of 'State' : Need to decide which subclasses need and how
-it should be done.</p>
+</div>
 </div>
 <div class="section" id="week-5">
 <h3>Week 5</h3>
@@ -168,18 +147,7 @@ window to find file to drag and drop.</p>
         </div><!-- /.social -->
 
 
-<!-- 
-    <script type="text/javascript">
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-45968778-1']);
-    _gaq.push(['_trackPageview']);
-    (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
-    </script>
- -->
+<!--  -->
 
 </body>
 </html>
