@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="author" content="Guru Devanla">
+        <title>Curry Power</title>
+
+        <!--web fonts-->
+        <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
+        <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
+
+        <link rel="stylesheet" href="/theme/css/main.css" />
+        <link rel="stylesheet" href="/theme/css/pygment.css"/>
+        <link rel="stylesheet" href="/theme/css/emacs.css"/>
+
+
+           <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+</head>
+
+<body>
+    <header>
+        <span><a class="title" href="/index.html"><h1>blog <| code </h1></a></span>
+        <nav>
+            <ul>
+                    <li><a href="/index.html">posts</a></li>
+                    <li><a href="/archives.html">archives</a></li>
+                    <li><a href="/pages/who-am-i.html">about</a></li>
+            </ul>
+        </nav>
+    </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/drafts/the-power-of-currying.html" rel="bookmark"
+           title="Permalink to Curry Power">Curry Power</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2016-09-05T06:56:48.060628-07:00">
+                    05 09 2016
+                </abbr>
+                In <a href="/category/python-currying-functional.html">Python, currying, functional</a>.       </div><!-- /.entry-content -->
+
+    </header>
+    <h2>What is currying?</h2>
+<p>From <a href="https://en.wikipedia.org/wiki/Currying" title="wiki-curry">Wikipedia</a></p>
+<blockquote>
+<blockquote>
+<p>In mathematics and computer science, currying is the technique of
+translating the evaluation of a function that takes multiple
+arguments (or a tuple of arguments) into evaluating a sequence of
+functions, each with a single argument. Currying is related to, but
+not the same as partial application.</p>
+</blockquote>
+</blockquote>
+<h2>Why curry?</h2>
+<p>As the definition says, it gives us the ability to invoke functions with a partial set of arguments(in required order) and evaluate the function only after all arguments for the function are available.</p>
+<ol>
+<li>We could re-define functions by providing partial arguments</li>
+<li>Lazy evaluation - apply all arguments to a function, but post-pone
+   the final evaluation until it is needed</li>
+</ol>
+<p>You probably are already familiar with the <code>partial</code> function
+available in the functools library. <code>partial</code> function can be used
+to implement currying. But, this can require a lot of bolier plate
+code, This post walks through sme code examples based on the
+implementation of <code>curry</code> and related classes in <a href="https://bitbucket.org/jason_delaat/pymonad/raw/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py" title="@curry">Pymonad</a>. Examples are also adapted from the documentation. The purpose of
+this post is to walk through the implementation piecemeal and
+appreciate the power of currying. We will see how just by 'currying'
+and defining certain mapping of functions we can build powerful
+structures of computation in Python.</p>
+<h2>Simple advantages - Lazy construction and evaluation</h2>
+<p>Say, we want to curry a function just by using a decorator called <code>curry</code>. One way would be like,</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="nd">@curry</span>
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+
+    <span class="n">add</span><span class="p">(</span><span class="mi">10</span><span class="p">)(</span><span class="mi">32</span><span class="p">)</span>
+    <span class="o">&gt;</span> <span class="mi">42</span>
+
+    <span class="c1"># apply arguments one and a time</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span>
+    <span class="o">&gt;</span> <span class="mi">32</span>
+</pre></div>
+</td></tr></table>
+
+<p>In the above example, notice that we could invoke <code>add</code> twice,
+once for each argument. Once all the arguments to the function are
+provided, the function is executed and the result is avalable.</p>
+<p>How would we implement the <code>curry</code> decorator. Conceptually, here are
+the things we will have to take care of</p>
+<ol>
+<li>Recursively apply the arguments to the function as they become available</li>
+<li>Invoke the function once all argument to the function has been provided</li>
+</ol>
+<p>Let's work on each of these steps. For recursively applying arguments,
+we need to apply arguments that become available, but also return an
+value that can be invoked during the next call. Therefore, we have a
+function we will call a <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default#Reader.py-102">buildReader</a></p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">def</span> <span class="nf">buildReader</span><span class="p">(</span><span class="n">argValues</span><span class="p">,</span> <span class="n">numArgs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">numArgs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">argValues</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">=</span>  <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">buildReader</span><span class="p">(</span><span class="n">argValues</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">numArgs</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">l</span>
+</pre></div>
+</td></tr></table>
+
+<p>Here the <code>buildReader</code> recursively invokes itself, applying one argument at a time, but returns a callable that
+will accept the next argument. Once, all the arguments to the wrapped function is exhausted, the wrapped
+function in invoked and the final value is returned.</p>
+<p>For example, if we were to invoke,</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="nd">@curry</span>
+<span class="k">def</span> <span class="nf">add3</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span> <span class="o">+</span> <span class="n">z</span>
+</pre></div>
+</td></tr></table>
+
+<p>then we have a invocation structure for <code>add(10)(20)(30)</code> looks like</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span> <span class="p">:</span> <span class="n">builderReader</span><span class="p">([</span><span class="mi">10</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>   <span class="c1"># add(10)</span>
+<span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">builderReader</span><span class="p">([</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="c1"># add(20)</span>
+ <span class="mi">60</span> <span class="c1"># add(30)</span>
+</pre></div>
+</td></tr></table>
+
+<p>Now, we still need to handle the base invocation scenario and also
+ability to <code>call</code> the add method repeatedly. Therefore, it would
+be reasonable to wrap the <code>buildReader</code> in a callable so that this
+object can be invoked repeatedly. Here, is the updated
+<code>buildReader</code> along with the callable class.</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">curry</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Custom curry function. Does not handle kwonly args</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">numArgs</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">__code__</span><span class="o">.</span><span class="n">co_argcount</span>
+    <span class="k">def</span> <span class="nf">buildReader</span><span class="p">(</span><span class="n">argValues</span><span class="p">,</span> <span class="n">numArgs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">numArgs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">argValues</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">=</span>  <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">buildReader</span><span class="p">(</span><span class="n">argValues</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">numArgs</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">l</span>
+    <span class="k">return</span> <span class="n">CallableClass</span><span class="p">(</span><span class="n">buildReader</span><span class="p">([],</span> <span class="n">numArgs</span><span class="p">))</span>
+
+<span class="k">class</span> <span class="nc">CallableClass</span><span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Wrap the function to call inside a callable</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">func</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+            <span class="c1"># here we are just invoking the buildReader iteratively</span>
+            <span class="c1"># no error handling to check excees no of arguments</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="c1"># we have not exhausted the argument yet,</span>
+            <span class="c1"># therefore, continue wrapping the buildReader inside</span>
+            <span class="c1"># the callable class</span>
+            <span class="k">return</span> <span class="n">CallableClass</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">f</span>  <span class="c1"># we have the final value after evaulation</span>
+</pre></div>
+</td></tr></table>
+
+<p>Notice, in the above snippet, the <code>__call__</code> function repeatedly applies the arguments to the
+wrapped function, giving us this progression</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span> <span class="p">:</span> <span class="n">builderReader</span><span class="p">([</span><span class="mi">10</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>   <span class="c1"># add(10)</span>
+<span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">builderReader</span><span class="p">([</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="c1"># add(20)</span>
+ <span class="mi">60</span> <span class="c1"># add(30)</span>
+</pre></div>
+</td></tr></table>
+
+<p>We see that we have achieved our initial objective of being able to
+use the curry decorator in place of the partial function in a very
+transparent manner. We use <em>curried</em> functions
+as expression and we can <em>pass</em> them around till they are evaluated.</p>
+<h2>Simple Composition</h2>
+<p>In the first step, we were able to create an expression out of one function. We can
+extend this a little further and create expressions of <code>composed curried</code>
+functions. For example, say we had</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6
+7</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="nd">@curry</span>
+<span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+
+<span class="nd">@curry</span>
+<span class="k">def</span> <span class="nf">mult</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span>
+</pre></div>
+</td></tr></table>
+
+<p>Then, we would like to declare statements such as</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">x</span> <span class="o">=</span> <span class="p">((</span><span class="n">add</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="n">mult</span><span class="p">(</span><span class="mi">3</span><span class="p">))(</span><span class="mi">2</span><span class="p">))</span>   <span class="c1"># &#39;*&#39; is composition operator</span>
+    <span class="n">x</span> <span class="o">==</span> <span class="p">(</span><span class="n">mult</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">add</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span>  <span class="c1"># here we compose add and mult</span>
+    <span class="n">x</span> <span class="o">==</span> <span class="mi">21</span>
+</pre></div>
+</td></tr></table>
+
+<p>To do this, we just extend out <code>CallableClass</code> to perform <code>*</code> (composition)</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        func: is the outer function in the function composition</span>
+<span class="sd">        in a * b, func will be a</span>
+
+<span class="sd">        Here we need to invoke a first and then invoke b.</span>
+
+<span class="sd">        By this point the function operands have all but one argument</span>
+<span class="sd">        applied to them</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">return</span> <span class="n">CallableClass</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+</pre></div>
+</td></tr></table>
+
+<p>This is great. Now, we can create expressions that are composed functions
+(that are not yet evaluated). The composed functions can also be nested.</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">x</span> <span class="o">=</span> <span class="p">((</span><span class="n">add</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="n">mult</span><span class="p">(</span><span class="mi">3</span><span class="p">))(</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>   <span class="c1"># 31</span>
+</pre></div>
+</td></tr></table>
+
+<h2>Pipelining operations with one common input</h2>
+<p>Say, we want <em>compose</em> a series of functions. In addition, we want all
+the functions in the series to have access to the <em>initial</em> input. For
+example, say we want</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">initial_input</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">mult</span><span class="p">(</span><span class="n">add</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">initial_input</span><span class="p">),</span> <span class="n">initial_input</span><span class="p">)</span>
+</pre></div>
+</td></tr></table>
+
+<p>Here we are sequencing our operations with a predecessor output in
+addition to the intial value. Lets extend the <code>CallableClass</code> to
+handle this operation. We will use the <code>rshift</code> operator to
+support this operation. The <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default#Reader.py-83">rshift</a> method, is also called <code>bind</code> method
+in languages such as Haskell.</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">def</span> <span class="nf">__rshift__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Compose functions, but also call the inner function</span>
+<span class="sd">        &#39;&#39;&#39;</span> <span class="k">with</span> <span class="n">x</span>
+        <span class="k">return</span> <span class="n">CallableClass</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">x</span><span class="p">))(</span><span class="n">x</span><span class="p">))</span>
+</pre></div>
+</td></tr></table>
+
+<p>Now, we can do the following</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">add</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">mult</span><span class="p">())</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">x</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>  <span class="c1"># print 200</span>
+</pre></div>
+</td></tr></table>
+
+<p>We just created an expression that can compose a sequence of methods, in addition to maintaining
+access to the initial input invoking the expression. Lets, take a look at an nested example</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">mult</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">add</span><span class="p">())</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">add</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">y</span> <span class="o">&gt;&gt;</span> <span class="n">mult</span><span class="p">())</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">x</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span> <span class="c1"># 2100</span>
+</pre></div>
+</td></tr></table>
+
+<p>How that works in left as an exercise. But, the important thing to note is that we were able to embed
+sequence of expressions.</p>
+<h2>Wrap Up: We just built a Reader Monad</h2>
+<p>The concept of sequencing a set of methods into a composable funcitons is abstracted away using concepts
+called <em>Monad</em>. More precisely, what we just saw was an example of a Reader Monad. The <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default">Reader</a> here
+provides the full implementation of the Reader Monad. The curious reader, may also want to explore the
+<code>amap</code> method in this class. This method in turns implements what is called an Applicative.</p>
+<p>To learn more on this using the Python implementation, check out <a href="https://bitbucket.org/jason_delaat/pymonad/">PyMonad</a></p>
+
+
+  </article>
+</section>
+    <footer>
+        <hr>
+        <div class="social">
+            <ul>
+                <li><a href="http://github.com/gdevanla">GitHub</a></li>
+                <li><a href="http://twitter.com/grdvnl">Twitter</a></li>
+            </ul>
+            <ul>
+                <li>
+                    Powered by Pelican
+                </li>
+            </ul>
+        </div><!-- /.social -->
+
+
+<!--  -->
+
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8" />
         <meta name="author" content="Guru Devanla">
-        <title>Blog <| Code - algorithm</title>
+        <title>The unreasonable flexibility of creating tests in Haskell(using HUnit)</title>
 
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
@@ -56,16 +56,44 @@
             </ul>
         </nav>
     </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/drafts/haskell-tests.html" rel="bookmark"
+           title="Permalink to The unreasonable flexibility of creating tests in Haskell(using HUnit)">The unreasonable flexibility of creating tests in Haskell(using HUnit)</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2016-09-05T07:13:35.957716-07:00">
+                    05 09 2016
+                </abbr>
+                In <a href="/category/haskell-testing.html">Haskell, testing</a>.       </div><!-- /.entry-content -->
 
-<section>
-    <ul>
-               <li>
-                   <a href="/y-combinator-with-clojure.html">Y-Combinator with Clojure</a>
-                   <span class='extra-info'><em>11 08 2016</em></span>
-               </li>
-    </ul>
+    </header>
+    <p>One can use HUnit for writing test in Haskell. HUnit provides a very
+flexible way of creating tests and grouping them. Using HUnit, tests
+can be arranged in a tree like hierarchy irrespective of where they
+are defined. Each node in the <code>test</code> tree can either be a node that
+contains children, which are themselves <code>group</code> of tests or individual
+tests.</p>
+<p>Each individual tests, is an instance of TestCase, that can be created
+using <code>testCase</code> is of type <code>Assertion</code>.</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">type</span> <span class="kt">Assertion</span> <span class="ow">=</span> <span class="kt">IO</span> <span class="nb">()</span>
+</pre></div>
+</td></tr></table>
+
+<p>Therefore, to generate multiple testCase objects, that test a common
+invariant, all we need to do is call a function such as below for
+different inputs, and let the function return a TestCase instance.</p>
+<p>Here is an example</p>
+<p>```
+test_simple_foo input test_name expected_output = testCase test_name (
+    do
+    calc_step_tester "assert a match" dropSmallTrades input ([1001..1005] ++ [720]) expected
+    )</p>
+
+
+  </article>
 </section>
-
     <footer>
         <hr>
         <div class="social">

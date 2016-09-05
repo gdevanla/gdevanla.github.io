@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="author" content="Guru Devanla">
+        <title>Journey from Python to Haskell - What I learnt</title>
+
+        <!--web fonts-->
+        <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
+        <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
+
+        <link rel="stylesheet" href="/theme/css/main.css" />
+        <link rel="stylesheet" href="/theme/css/pygment.css"/>
+        <link rel="stylesheet" href="/theme/css/emacs.css"/>
+
+
+           <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+</head>
+
+<body>
+    <header>
+        <span><a class="title" href="/index.html"><h1>blog <| code </h1></a></span>
+        <nav>
+            <ul>
+                    <li><a href="/index.html">posts</a></li>
+                    <li><a href="/archives.html">archives</a></li>
+                    <li><a href="/pages/who-am-i.html">about</a></li>
+            </ul>
+        </nav>
+    </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/journey-haskell-python.html" rel="bookmark"
+           title="Permalink to Journey from Python to Haskell - What I learnt">Journey from Python to Haskell - What I learnt</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2016-08-11T20:32:27.344053-07:00">
+                    11 08 2016
+                </abbr>
+                In <a href="/category/functional-programming-haskell-data-structures.html">functional programming, Haskell, data-structures</a>.       </div><!-- /.entry-content -->
+
+    </header>
+    <h1>Motivation</h1>
+<p><em>fill in more here</em>
+It was critical for some of the routines in
+this project to run in tight loops, have good gaurantees of data that
+is fed in as input and also produce accurate results. Bugs in these
+critical rountines would not be tolerable in terms of not incurring
+significant losses . But, in some projects where
+one deals with money and transactions in huge amounts it becomes
+important to be able to prove the code is correct even before it
+runs. Though, proof checking of code could be expensive and not
+everyone would want to invest in such effort, I was hoping strongly-typed
+languages could provide multiple levels of support to write correct
+code. This articile is  journal on my exploring this aspect while
+trying to port code from Python to Haskell.</p>
+<ol>
+<li>Just look for an alternative language for fun</li>
+<li>It should be functional</li>
+<li>It should be statically typed, but should not be verbose are too restrictive</li>
+<li>Should enable learning new concepts that I have not been exposed to so far</li>
+<li>Have Fun!</li>
+</ol>
+<p>First Steps</p>
+<p>I start looking at OCaml initially. I has worked on some toy projecs
+on SML/NJ and OCaml seemed like a great language to explore given the
+motivation. The OCaml documentation and tutorials on the web site was
+great and I also started enjoying working on the Real World OCaml
+book. Like any ML descendant language the optional typing, pattern
+matching strucutures stood out. The module system provided the needed
+abstraction that was required for the such a project.</p>
+<p>OCaml is a great language. But, given my time constraint and
+motivations, certain aspects of the eco-system started to deplete my
+motivation to continue using OCaml. The big decisions, I had to make
+was</p>
+<ol>
+<li>Confusion while picking between Std.Core and Core developed/contributed by Jane
+Street.</li>
+<li>Stale batteries included packages.</li>
+<li>Lack of thriving eco-system, say compared to Haskell or even F#.</li>
+</ol>
+<p>My points above are totally biased, and also a product of not spending
+enough time resolving the above issues. I would love to revisit OCaml
+atleast to use ocaml_of_js, since the basic language is powerful and I
+would enjoy writing code in it.</p>
+<p>So, I had to look for an alternative language to continue porting the
+Python library. The next two candidates I had in mind was Haskell and
+F#. I decided against F# atleast for the current project, since
+tooling for F# in the Unix environment would be lacking, when compared
+to Haskell. </p>
+<h2>Motivations - Choosing Haskell</h2>
+<ol>
+<li>Strongly-typed with optional typing.</li>
+<li>Very mature language and a thriving eco-system.</li>
+<li>The abstract concepts I would be exposed to(hoping they would be
+indirectly useful while working with other languages). This was an
+very important consideration, as Haskell language itself was built
+around exploring and pushing the boundaries of what type systems and
+data structures is supports could do!
+4  The future of programming involves immutability and multi-core and
+Haskell, I believe, is ready to take on that task.</li>
+</ol>
+<h2>Some apprehensions</h2>
+<ol>
+<li>Somtimes, the documentation can be lacking and very sparse.</li>
+<li>Haddock produced documentation mostly involes one line descriptions
+of API and learning to use each library could be daunting.</li>
+<li>Laziness - it is a very large shift in mindset. I really wish there
+was a switch to turn of this feature. Reasoning becomes difficult for
+beginners. I suppose  experts find that difficult too.</li>
+</ol>
+<h2>Journey Begins</h2>
+<ul>
+<li>
+<p>Reading - Since, I had some working knowledge of an ML language, I
+  was able to grasps the initial parts of RWAH and LYAH  very
+  quickly. I had to spend some time on understanding
+  Functors/Applicative and Monads. I have to say, it was a continuous
+  process over time by the time she gets used to it.</p>
+</li>
+<li>
+<p>Too enthusiastic on types</p>
+</li>
+</ul>
+<p>Like a kid given a new power toy, I resort to encoding as much logic
+   I  have in the code into types. I am aware such temptations leading
+   to type hell. But, nevertheless, only being exposed to the
+   restricitive type systems of Java and C# in prior real-world
+   projects I had try out my new power.</p>
+<ul>
+<li>
+<p>Some of my attempts at that involved exploring and using</p>
+<ul>
+<li>Parametric Polymorphism - I quickly realize it is very limiting</li>
+<li>Ad-hoc polymorphisn - akin to function overloading in other
+   languages</li>
+<li>I go a one step further and enforce types on parameteric types,
+   and end up exploring DataKinds,</li>
+<li>With either of these approaches, it gets tedious when dealing</li>
+<li>with pattern matching. - Pattern matching, getting stuck with Polymorphic types</li>
+<li>Finally, I end up simplifying the whole type strucuture just
+  with simple Maps, List, Set and Union Types.  I make this
+  decision due to some of the challenges (some due to my
+  ignorance), in getting things done within the timeline I set
+  myself up for</li>
+</ul>
+</li>
+<li>
+<p>Getting Lost in Haskell Language Extensions</p>
+</li>
+</ul>
+<p>The nice thing about working in Python is the batteries-included
+  standard library. Also, any language related syntax/features are
+  part of the standard runtime itself.</p>
+<p>Haskell, is a lot different in this. The core Haskell language
+  itself does not support many syntactic sugars and <em>fill here</em> out of
+  the box. For many useful features, one has to enable a host of
+  language extensions. It is easy to get lost in the large numbers of
+  extensions available. One resource, I found very useful was
+  '24 days of GHC Extensions'. This series of articles provides a very
+  nice overview of some of the extensions you most probably will need
+  to get some convinient language level featues.</p>
+<ul>
+<li>Finally, using the State Monad.</li>
+</ul>
+<p>Using pure expressions which are dependent on top level state
+  object.</p>
+<ul>
+<li>Working with Basic CSV</li>
+</ul>
+<p>It is a different world out there.</p>
+<ul>
+<li>
+<p>Simple Pretty Printing comes handly - while coming from Pandas</p>
+</li>
+<li>
+<p>Yet to do - Lens, Wrap the State Monad into Writer and probably Config</p>
+</li>
+</ul>
+<p>Nice things</p>
+<ul>
+<li>Delightful convienience to represent small functions since you do not have to worry about immutability</li>
+<li>Easy refactoring - you only test business logic, not obvious things</li>
+</ul>
+<p>Writing Tests
+-  Good things, bad things</p>
+<p>Novice Mistakes</p>
+<ul>
+<li>Expressions referring to itself</li>
+<li>Strictness</li>
+<li>Failing to wrap your head around Monads and isolating IO Monads when working with other Monads</li>
+<li>Modules and scoping</li>
+</ul>
+<h2>Some videos:</h2>
+<ul>
+<li>What I wish Haskell had</li>
+<li>Named arguments</li>
+<li>Default Arguments</li>
+<li>Better way of tracing</li>
+<li>No Laziness, Strictness would have been preferable</li>
+<li>Lesser number of ways of doing things</li>
+<li>Documentation - very very terse, Example = CSV documentation</li>
+</ul>
+<p>Other Libraries</p>
+<ol>
+<li>Parsec</li>
+<li>Lens</li>
+<li>Arrows</li>
+<li>Data Kinds and Data Families</li>
+</ol>
+
+
+  </article>
+</section>
+    <footer>
+        <hr>
+        <div class="social">
+            <ul>
+                <li><a href="http://github.com/gdevanla">GitHub</a></li>
+                <li><a href="http://twitter.com/grdvnl">Twitter</a></li>
+            </ul>
+            <ul>
+                <li>
+                    Powered by Pelican
+                </li>
+            </ul>
+        </div><!-- /.social -->
+
+
+<!--  -->
+
+</body>
+</html>
