@@ -63,8 +63,8 @@
         <a class="title" href="/the-power-of-currying.html" rel="bookmark"
            title="Permalink to Curry Power">Curry Power</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2016-09-05T06:56:26.804421-07:00">
-                    05 09 2016
+                <abbr class="published" title="2016-09-07T00:00:00-07:00">
+                    09-07-2016
                 </abbr>
                 In <a href="/category/python-currying-functional.html">Python, currying, functional</a>.       </div><!-- /.entry-content -->
 
@@ -81,17 +81,19 @@ not the same as partial application.</p>
 </blockquote>
 </blockquote>
 <h2>Why curry?</h2>
-<p>As the definition says, it gives us the ability to invoke functions with a partial set of arguments(in required order) and evaluate the function only after all arguments for the function are available.</p>
+<p>As the definition says, it gives us the ability to invoke functions
+with a partial set of arguments(in required order) and evaluate the
+function only after all arguments for the function are available. Therefore,</p>
 <ol>
 <li>We could re-define functions by providing partial arguments</li>
-<li>Lazy evaluation - apply all arguments to a function, but post-pone
+<li>Lazy evaluation - apply arguments to a function, but postpone
    the final evaluation until it is needed</li>
 </ol>
-<p>You probably are already familiar with the <code>partial</code> function
+<p>You are probably familiar with the <code>partial</code> function
 available in the functools library. <code>partial</code> function can be used
-to implement currying. But, this can require a lot of bolier plate
-code, This post walks through sme code examples based on the
-implementation of <code>curry</code> and related classes in <a href="https://bitbucket.org/jason_delaat/pymonad/raw/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py" title="@curry">Pymonad</a>. Examples are also adapted from the documentation. The purpose of
+to implement currying. But, this can require a lot of boiler plate
+code, This post walks through the code examples based on the
+implementation of <code>curry</code> and related classes in <a href="https://bitbucket.org/jason_delaat/pymonad/raw/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py" title="@curry">PyMonad</a>. Examples are also adapted from the documentation. The purpose of
 this post is to walk through the implementation piecemeal and
 appreciate the power of currying. We will see how just by 'currying'
 and defining certain mapping of functions we can build powerful
@@ -123,8 +125,8 @@ structures of computation in Python.</p>
 </td></tr></table>
 
 <p>In the above example, notice that we could invoke <code>add</code> twice,
-once for each argument. Once all the arguments to the function are
-provided, the function is executed and the result is avalable.</p>
+once for each argument. Once all the arguments to the function have been
+provided, the function is invoked and the result is available.</p>
 <p>How would we implement the <code>curry</code> decorator. Conceptually, here are
 the things we will have to take care of</p>
 <ol>
@@ -132,8 +134,8 @@ the things we will have to take care of</p>
 <li>Invoke the function once all argument to the function has been provided</li>
 </ol>
 <p>Let's work on each of these steps. For recursively applying arguments,
-we need to apply arguments that become available, but also return an
-value that can be invoked during the next call. Therefore, we have a
+we need to apply arguments that become available, but also return a
+callable that can be invoked during the next call. Therefore, we can implement a
 function we will call a <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default#Reader.py-102">buildReader</a></p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
@@ -170,11 +172,12 @@ function in invoked and the final value is returned.</p>
 </pre></div>
 </td></tr></table>
 
-<p>Now, we still need to handle the base invocation scenario and also
-ability to <code>call</code> the add method repeatedly. Therefore, it would
-be reasonable to wrap the <code>buildReader</code> in a callable so that this
-object can be invoked repeatedly. Here, is the updated
-<code>buildReader</code> along with the callable class.</p>
+<p>Now, we still need to handle the base invocation scenario(call made
+when the decorator is evaluated) and also ability to <code>call</code> the
+add method repeatedly. Therefore, it would be reasonable to wrap the
+<code>buildReader</code> in a callable so that this object can be invoked
+repeatedly. Here, is the updated <code>buildReader</code> along with the
+callable class.</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -212,7 +215,7 @@ object can be invoked repeatedly. Here, is the updated
 35
 36</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">curry</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Custom curry function. Does not handle kwonly args</span>
+<span class="sd">    Custom curry function. Does not handle kw-only args</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="n">numArgs</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">__code__</span><span class="o">.</span><span class="n">co_argcount</span>
     <span class="k">def</span> <span class="nf">buildReader</span><span class="p">(</span><span class="n">argValues</span><span class="p">,</span> <span class="n">numArgs</span><span class="p">):</span>
@@ -237,7 +240,7 @@ object can be invoked repeatedly. Here, is the updated
         <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span>
         <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
             <span class="c1"># here we are just invoking the buildReader iteratively</span>
-            <span class="c1"># no error handling to check excees no of arguments</span>
+            <span class="c1"># no error handling to check excess no of arguments</span>
             <span class="n">f</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
@@ -245,12 +248,13 @@ object can be invoked repeatedly. Here, is the updated
             <span class="c1"># therefore, continue wrapping the buildReader inside</span>
             <span class="c1"># the callable class</span>
             <span class="k">return</span> <span class="n">CallableClass</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">f</span>  <span class="c1"># we have the final value after evaulation</span>
+        <span class="k">return</span> <span class="n">f</span>  <span class="c1"># we have the final value after evaluation</span>
 </pre></div>
 </td></tr></table>
 
-<p>Notice, in the above snippet, the <code>__call__</code> function repeatedly applies the arguments to the
-wrapped function, giving us this progression</p>
+<p>Notice, in the above snippet, the <code>__call__</code> function repeatedly
+applies the iterable of arguments to the wrapped function, giving us this
+progression</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span> <span class="p">:</span> <span class="n">builderReader</span><span class="p">([</span><span class="mi">10</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>   <span class="c1"># add(10)</span>
@@ -260,9 +264,9 @@ wrapped function, giving us this progression</p>
 </td></tr></table>
 
 <p>We see that we have achieved our initial objective of being able to
-use the curry decorator in place of the partial function in a very
-transparent manner. We use <em>curried</em> functions
-as expression and we can <em>pass</em> them around till they are evaluated.</p>
+use the curry decorator in place of the <code>partial</code> function. We use
+<em>curried</em> functions as expressions and we can <em>pass</em> them around till
+they are evaluated.</p>
 <h2>Simple Composition</h2>
 <p>In the first step, we were able to create an expression out of one function. We can
 extend this a little further and create expressions of <code>composed curried</code>
@@ -319,8 +323,9 @@ functions. For example, say we had</p>
 </pre></div>
 </td></tr></table>
 
-<p>This is great. Now, we can create expressions that are composed functions
-(that are not yet evaluated). The composed functions can also be nested.</p>
+<p>Awesome! Now, we can create expressions that are composed functions
+(that are not yet evaluated). The composed functions can also be declared
+across multiple statements and then assembled together.</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3
@@ -331,8 +336,8 @@ functions. For example, say we had</p>
 </pre></div>
 </td></tr></table>
 
-<h2>Pipelining operations with one common input</h2>
-<p>Say, we want <em>compose</em> a series of functions. In addition, we want all
+<h2>Pipe-lining operations with one common input</h2>
+<p>Say, we want to <em>compose</em> a series of functions. In addition, we want all
 the functions in the series to have access to the <em>initial</em> input. For
 example, say we want</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
@@ -342,10 +347,9 @@ example, say we want</p>
 </td></tr></table>
 
 <p>Here we are sequencing our operations with a predecessor output in
-addition to the intial value. Lets extend the <code>CallableClass</code> to
+addition to the initial value. Lets extend the <code>CallableClass</code> to
 handle this operation. We will use the <code>rshift</code> operator to
-support this operation. The <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default#Reader.py-83">rshift</a> method, is also called <code>bind</code> method
-in languages such as Haskell.</p>
+support this operation.</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3
@@ -373,14 +377,18 @@ access to the initial input invoking the expression. Lets, take a look at an nes
 </pre></div>
 </td></tr></table>
 
-<p>How that works in left as an exercise. But, the important thing to note is that we were able to embed
-sequence of expressions.</p>
+<p>How the above example works in left as an exercise. But, the important
+thing to note is that we were able to embed sequence of expressions.</p>
 <h2>Wrap Up: We just built a Reader Monad</h2>
-<p>The concept of sequencing a set of methods into a composable funcitons is abstracted away using concepts
-called <em>Monad</em>. More precisely, what we just saw was an example of a Reader Monad. The <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default">Reader</a> here
-provides the full implementation of the Reader Monad. The curious reader, may also want to explore the
-<code>amap</code> method in this class. This method in turns implements what is called an Applicative.</p>
-<p>To learn more on this using the Python implementation, check out <a href="https://bitbucket.org/jason_delaat/pymonad/">PyMonad</a></p>
+<p>The concept of sequencing a set of methods into a composable functions
+is abstracted away using concepts called <em>Monad</em>. More precisely, what
+we just saw was an loose example of a Reader Monad.<sup id="a1"><a href="#f1">1</a></sup>.
+The <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default">Reader</a> here provides the full
+implementation of the Reader Monad. The curious reader, may also want
+to explore the <code>amap</code> method in this class. This method in turns
+implements what is called an Applicative.</p>
+<p>If you got this far, I suggest you check out <a href="https://bitbucket.org/jason_delaat/pymonad/">PyMonad</a></p>
+<p><b id="f1">1</b> I call it loose, since our CallableClass needs to implement a few more methods before it can be called a Monad. But conceptually, we have a Reader Monad at hand. <a href="#a1">↩</a></p>
 
 
   </article>
