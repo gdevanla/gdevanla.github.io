@@ -63,8 +63,8 @@
         <a class="title" href="/metaclasses-at-work-in-python.html" rel="bookmark"
            title="Permalink to Metaclasses at work - Generating well formed tests in Python">Metaclasses at work - Generating well formed tests in Python</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2016-08-31T05:32:38.677063-07:00">
-                    31 08 2016
+                <abbr class="published" title="2016-09-08T00:00:00-07:00">
+                    09-08-2016
                 </abbr>
                 In <a href="/category/python-testing.html">Python, testing</a>.       </div><!-- /.entry-content -->
 
@@ -74,8 +74,8 @@
 meta-classes facility of Python.</p>
 <p>Problem Statement:</p>
 <p>In many instances, we end up with tests that check for a common set of
-invariants for a large set of inputs.  For example, say we will be
-testing a function such as</p>
+invariants for a large set of inputs.  For example, say we need to
+test a function such as</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3
@@ -89,7 +89,7 @@ testing a function such as</p>
 </td></tr></table>
 
 <p>To generate a comprehensive set of tests for this function, we will
-need 8 tests, which all look the same except for the input.</p>
+need 8 tests, which all look the same except for the input that will vary.</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -132,15 +132,16 @@ need 8 tests, which all look the same except for the input.</p>
 </pre></div>
 </td></tr></table>
 
-<p>Our objective here is to avoid such bolierplace code. In the
-real-world the 8 scenerios expresssed here could translate into 100 of
-inputs from production data that can be used as validate code.</p>
-<p>The alternative approach of looping around all the input and have the
-assert statements in the loop is not acceptable, since we loose the
-nice error reporting mechanism of test runtime. For example, if a test
-fails, you really do not know which input the tests failed for. Also,
-it would be an anti-pattern to take such an approach. Here is an
-example of the anti-pattern.</p>
+<p>Our objective here is to avoid such bolierplate code. In the
+real-world the 8 scenerios expresssed here could translate into 100's of
+inputs from production data that can be used to regression test new
+changes to code.</p>
+<p>The alternate approach of looping around all the input and have the
+assert statements in the loop is not desirable, since we loose the
+descriptive error reporting mechanism of provided by the test runtime.
+For example, if a test fails, you really would not know which input
+the tests failed for. It would be an anti-pattern to take such
+an approach. Here is an example of the anti-pattern.</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -181,8 +182,8 @@ example of the anti-pattern.</p>
 </pre></div>
 </td></tr></table>
 
-<p>For example, if you were working on some complex application that deals
-with lot numeric data and produces a complex set of outputs. It would
+<p>In the real world, this would apply to any complex application that deals
+with lot numeric data and produces a large data set of outputs. It would
 be beneficial to be able to use past production data(which we assume
 would have been validated, by its use), and assume that to be a good
 indicator ot expected output. Coupling the input that went into
@@ -191,7 +192,7 @@ could be handy as a regression test suite and can also be used
 effectively while refactoring our code.</p>
 <p>So, how do we avoid such bolier plate code? One option is to use
 Python's meta-classes facility to auto-generate our tests.</p>
-<p>Lets do this is steps:</p>
+<p>Lets do this in steps:</p>
 <ol>
 <li>We will need a factory function that will create our test methods,
 that we will attach to our test class.</li>
@@ -211,14 +212,14 @@ that we will attach to our test class.</li>
 </td></tr></table>
 
 <p>Here the <code>create_func</code>, returns a <code>func</code> object. This <code>func</code> will be
-attached to the Test class we will create in the following steps. This
+attached to the Test class we will create in the next few steps. This
 <code>func</code> object will be the <code>test_*</code> method in the test
 class. We will create as many <code>func</code> objects as the number of test
 inputs we have. The <code>func</code> object, will in turn invoke the
 <code>foo</code> method and then call all function, that will verify all the
 invariants that the result of the function has to satisfy.</p>
-<p>Now, let's look at how we can loop around all test inputs and attached
-the <code>func</code> object to the test classe. We will create a class, that
+<p>Now, let's look at how we can loop around all test inputs and attach
+the <code>func</code> object to the test classes. We will create a class, that
 will act as a meta class for our test class.</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
@@ -293,7 +294,7 @@ minted <code>func</code> to the Test class that is getting created.</p>
 </td></tr></table>
 
 <p>All this function does is to generate the input/output mapping. In a
-real-world example, this method would essentially e building the input
+real-world example, this method would essentially be assembling the input
 and grabbing the expected results from production data. That way,
 effective regression tests can be built using real-data.</p>
 <p>Here is the <a href="https://gist.github.com/gdevanla/3a94956541dc142370efb89313ac09fe">gist</a>.</p>
