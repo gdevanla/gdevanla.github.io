@@ -63,16 +63,16 @@
         <a class="title" href="/phantom-types-in-haskell.html" rel="bookmark"
            title="Permalink to Phantom Types">Phantom Types</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2016-08-11T20:32:27.348053-07:00">
-                    11 08 2016
+                <abbr class="published" title="2016-09-12T21:02:26.412274-07:00">
+                    09-12-2016
                 </abbr>
                 In <a href="/category/functional-programming-haskell-data-structures.html">functional programming, Haskell, data-structures</a>.       </div><!-- /.entry-content -->
 
     </header>
     <p>This is part of a mini-series documenting, what I believe are some
-essential features of Haskell one has to be familiar with as one try
-to become productive in Haskell.</p>
-<p>Phantom-types are an construct that can be built using parametric
+essential features of Haskell that are important to produce well
+structured programs.</p>
+<p>Phantom-types are a construct that can be built using parametric
 polymoprhism. Phantom-types help us tag information about an type
 during its creation and during type checking. This information is
 thrown away by the compiler during runtime.</p>
@@ -97,7 +97,7 @@ can be used later on during the execution.</p>
 </pre></div>
 </td></tr></table>
 
-<p>We can try is to parameterize the record type, like </p>
+<p>We can try is to parameterize the record type, like</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">GhostOrIllusion</span> <span class="ow">=</span>  <span class="kt">Ghost</span> <span class="o">|</span> <span class="kt">Illusion</span>

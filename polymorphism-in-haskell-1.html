@@ -63,55 +63,65 @@
         <a class="title" href="/polymorphism-in-haskell-1.html" rel="bookmark"
            title="Permalink to Polymorphism in Haskell">Polymorphism in Haskell</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2016-08-11T20:32:27.348053-07:00">
-                    11 08 2016
+                <abbr class="published" title="2016-09-12T00:00:00-07:00">
+                    09-12-2016
                 </abbr>
                 In <a href="/category/functional-programming-haskell-data-structures.html">functional programming, Haskell, data-structures</a>.       </div><!-- /.entry-content -->
 
     </header>
-    <p>In a dynamic language like Python, there is not strict concept of
+    <p>In a dynamic language like Python, there is no strict concept of
 function overloading. Though, one can overload operators, function
 overloading(other than operators) just means that you shadow the
 newest instance of a function (that is functions sharing the <code>same</code>
 name) over the old instance.</p>
 <p>Function over-loading is also referred to as <a href="https://en.wikipedia.org/wiki/Ad_hoc_polymorphism">ad-hoc polymorphism</a>.
-These definitions can be implemented in Haskell using <code>type classes</code>.</p>
+Haskell uses <code>type classes</code> to provide ad-hoc polymorphism.</p>
 <p>Ad-hoc polymorphism by way of <code>type classes</code> is much powerful when
-compared to function overloading features you get in languages like
-Java. For a language to support function overloading, it is required
-that the runtime knows the type of arguments and return types it is
-dealing with at the call site. This knowledge of of types (or arguments and return
-types) will help in the dispatching of the call to the appropriate
-overloaded function. Dispatching to methods can be done based on
- - arguments
- - return type
- - a combination of both.</p>
+compared to function overloading features you get in other static
+languages like Java. For a language to support function overloading,
+it is required that the runtime know the type of arguments and return
+types that is inferred at the call site. This knowledge of types is
+used in dispatching the call to the appropriate overloaded function.
+Dispatching to methods can be done based on</p>
+<ul>
+<li>
+<p>arguments</p>
+</li>
+<li>
+<p>return type</p>
+</li>
+<li>
+<p>a combination of both.</p>
+</li>
+</ul>
 <p>Not all languages let you do dispatching based on all the above(for example,
 in Java, dispatching to overloaded functions is only based on
 argument types and not return type. Haskell can do a dispatch to an
-function based on all of the above.</p>
-<p>Here are some examples of ad-hoc polymorphism that you could adopt in
-your own implementation:</p>
-<h3>Overloading on one argument of a function.</h3>
-<p>Say we have two record types, and we want an overloaded function
-called <code>checkValid</code> to work with both types.</p>
+function based on the return type as well.</p>
+<p>What follows are some example of ad-hoc polymorphism in use. We will assume we are
+working with following data types:</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">ClassRoom</span> <span class="ow">=</span> <span class="kt">ClassRoom</span> <span class="p">{</span><span class="n">className</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">studentCount</span><span class="ow">::</span><span class="kt">Int</span><span class="p">}</span>
     <span class="kr">data</span> <span class="kt">SportsTeam</span> <span class="ow">=</span>  <span class="kt">SportsTeam</span> <span class="p">{</span><span class="n">teamName</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">memberCount</span><span class="ow">::</span><span class="kt">Int</span><span class="p">}</span>
 </pre></div>
 </td></tr></table>
 
-<p>We can use type classes to implement the overloaded functions</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7
-8
-9</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="c1">-- One one parameter</span>
+<h3>Overloading on one argument of a function.</h3>
+<p>Say we have the two record types shown above, and we want an overloadeded function
+called <code>checkValid</code> to work with both types.</p>
+<p>We can use <code>type classes</code> to implement the overloaded functions</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="c1">-- Wrapped the checkValud function in a type class</span>
     <span class="kr">class</span> <span class="kt">OnOneParameter</span> <span class="n">a</span> <span class="kr">where</span>
+      <span class="c1">-- One one parameter</span>
       <span class="n">checkValid</span> <span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
 
     <span class="kr">instance</span> <span class="kt">OnOneParameter</span> <span class="kt">ClassRoom</span> <span class="kr">where</span>
@@ -177,7 +187,7 @@ arguments at the call site.</p>
 </pre></div>
 </td></tr></table>
 
-<p>Now, how should the compiler treat the definition below</p>
+<p>One example which is ambiguous is:</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">testFn</span> <span class="ow">::</span> <span class="p">(</span><span class="kt">OnOneParameter</span> <span class="n">b</span><span class="p">)</span> <span class="ow">=&gt;</span> <span class="kt">ClassRoom</span> <span class="ow">-&gt;</span> <span class="n">b</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
     <span class="n">testFn</span> <span class="n">a</span> <span class="n">b</span> <span class="ow">=</span> <span class="n">checkValidTogether</span> <span class="n">a</span> <span class="n">b</span>
@@ -240,7 +250,7 @@ dispatch is happening on the return type of the function</p>
 </td></tr></table>
 
 <h3>Overloading functions on both argument types and return type</h3>
-<p>This example just builds on the examples we have seen above. </p>
+<p>This example just builds on the examples we have seen above.</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3
@@ -280,8 +290,8 @@ dispatch is happening on the return type of the function</p>
 </pre></div>
 </td></tr></table>
 
-<p>By now, you would have noticed that Haskell provides is constructs
-that lets us a powerful se tof aabstractions using ad-hoc polmorphism.</p>
+<p>By now, we see that Haskell provides constructs that lets us build a
+powerful set of abstractions using ad-hoc polmorphism.</p>
 <p>As a bonus, here is an example of ad-hoc polymorphism for nested
 types:</p>
 <table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
