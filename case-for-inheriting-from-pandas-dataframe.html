@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="author" content="Guru Devanla">
+        <title>Subclassing a (Pandas) DataFrame</title>
+
+        <!--web fonts-->
+        <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
+        <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
+
+        <link rel="stylesheet" href="/theme/css/main.css" />
+        <!-- <link rel="stylesheet" href="/theme/css/pygment.css"/> -->
+        <link rel="stylesheet" href="/theme/css/default.css"/>
+
+
+           <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+</head>
+
+<body>
+    <header>
+        <span><a class="title" href="/index.html"><h1>blog <| code </h1></a></span>
+        <nav>
+            <ul>
+                    <li><a href="/index.html">posts</a></li>
+                    <li><a href="/archives.html">archives</a></li>
+                    <li><a href="/pages/who-am-i.html">about</a></li>
+                    <li><a href="/pages/books.html">book</a></li>
+            </ul>
+        </nav>
+    </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/case-for-inheriting-from-pandas-dataframe.html" rel="bookmark"
+           title="Permalink to Subclassing a (Pandas) DataFrame">Subclassing a (Pandas) DataFrame</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2017-08-30T00:00:00-07:00">
+                    08-30-2017
+                </abbr>
+                In <a href="/category/python-pandas-inheritance-type-hints.html">Python, Pandas, Inheritance, Type Hints</a>.       </div><!-- /.entry-content -->
+
+    </header>
+    <h1>Introduction</h1>
+<p>If you are a <a href="https://xkcd.com/353/">Python programmer</a> using the
+<a href="https://pandas.pydata.org/pandas-docs/stable/index.html">Pandas library</a> as
+one of the core libraries in the products you create, then you should
+be interested in this post. I hope to make a case for <code>subclassing</code> a
+Pandas DataFrame for certain use cases that are very common in
+projects that make use of DataFrames as a primary data structure to
+pass around tabular data.</p>
+<p>In a serious application, a typical use case is to wrap the following
+snippet of code in some domain specific class or a function.</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="n">students_data_file_path</span><span class="p">):</span>
+    <span class="c1"># some  code here...</span>
+
+    <span class="n">df</span> <span class="o">=</span>  <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">students_data_file_path</span><span class="p">)</span>  <span class="c1"># read a file with numerous columns</span>
+    <span class="k">return</span> <span class="n">df</span>
+</pre></div>
+
+
+<p>The dataframe returned by such a function could potentially have a large number of
+columns. Usually, this dataframe gets passed around to various
+other functions. Say, we have a function, that will find the mean of
+scores for the given list of students.</p>
+<div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">calculate_mean</span><span class="p">(</span><span class="n">students_df</span><span class="p">):</span>
+        <span class="c1"># some code</span>
+        <span class="o">..</span>
+        <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;scores&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>  <span class="c1"># string &#39;scores&#39; term</span>
+</pre></div>
+
+
+<p>Notice in the above code that the term <code>scores</code> is stringy. Also,
+we are using this <code>stringy</code> value to access the <code>column</code> in the
+dataframe. That is, we end up using this <code>stringy</code> value as an API into the
+dataframe we loaded. Now, imagine such <code>stringy</code> columns being used and reused
+everywhere across all the functions this dataframe gets passed around.</p>
+<p>Hope you see the problem here. We are using 'stringy` values as
+API. One way to fix this and make the reference more symbolic would be
+to create a related class which represents the columns available in
+the dataframe.</p>
+<p>For example, we could have</p>
+<div class="highlight"><pre><span></span>    <span class="c1"># student_data_def.py</span>
+
+    <span class="k">class</span> <span class="nc">StudentsData</span><span class="p">:</span>
+        <span class="c1"># each of the left-hand values represents the</span>
+        <span class="c1"># column names that are availale in the loaded file</span>
+        <span class="n">SCORES</span> <span class="o">=</span> <span class="s1">&#39;scores&#39;</span>
+        <span class="n">STUDENT_NAME</span> <span class="o">=</span> <span class="s1">&#39;student_name&#39;</span>
+</pre></div>
+
+
+<p>And therefore, our <code>calculate_mean</code> function, now looks like this</p>
+<div class="highlight"><pre><span></span>    <span class="kn">from</span> <span class="nn">student_data_def</span> <span class="kn">import</span> <span class="n">StudentsData</span>
+
+    <span class="k">def</span> <span class="nf">calculate_mean</span><span class="p">(</span><span class="n">students_df</span><span class="p">):</span>
+        <span class="o">.</span>
+        <span class="o">.</span>
+        <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="n">StudentsData</span><span class="o">.</span><span class="n">SCORES</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+</pre></div>
+
+
+<p>Now, this is better. We converted our stringy API to some symbolic
+values with better discover-ability. But, the problem here is
+that the <code>students_df</code> and <code>StudentsData</code> types are decoupled. Wherever, the
+dataframe is passed around we will have to import the StudentsData
+class in the modules that are working on this dataframe. Ideally, these two
+objects are supposed to reside together. We need more <code>coupling</code> between
+these two objects.</p>
+<p>Now, if you are one of the fortunate folks using Python 3.5 and above,
+you should be excited about Type Hints. Type Hints, if embraced
+carefully can help our editors assist us as we type out our code. The
+linting tools like PyLint and type checkers like
+<a href="http://mypy-lang.org/">MyPy</a> can also help us verify certain kinds of
+coding errors even before we run our code. In the scenario we are
+dealing with, imagine that we wanted to annotate our
+<code>calculate_mean</code> function with its type.</p>
+<p>Let us try that,</p>
+<div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">calculate_mean</span><span class="p">(</span><span class="n">students_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">:</span>
+        <span class="o">.</span>
+        <span class="o">.</span>
+        <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="n">StudentsData</span><span class="o">.</span><span class="n">SCORES</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+</pre></div>
+
+
+<p>Huh! <code>pd.DataFrame</code>. This type annotation does not provide us with
+any more information that the name of the variable. There is no way,
+for one to know what other columns are available in this
+DataFrame. All introspection capabilities are lost from such a rich
+data structure like the DataFrame which stores tens of fields. It seems like
+a mysterious object keeps getting passed around without any ability to understand
+its type without running the program or looking a all places the dataframe could have
+been initialized.</p>
+<h1>Summarizing our frustrations</h1>
+<p>a. Stringy API to access columns in DataFrame</p>
+<p>b. If we try to get rid of stringy API, then we have decoupled objects(dataframe and the class
+    declaring the columns)</p>
+<p>c. Inability to provide useful type hints.</p>
+<h1>One Proposed Solution</h1>
+<h6><a href="http://pandas.pydata.org/pandas-docs/stable/internals.html#subclassing-pandas-data-structures">Subclassing DataFrames</a></h6>
+<p>Pandas provides a way to subclass a DataFrame using the <code>_constructor</code> function. Here is some nice stuff that we can do this construct.</p>
+<div class="highlight"><pre><span></span>    <span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+
+    <span class="k">class</span> <span class="nc">StudentsDF</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="n">SCORES</span> <span class="o">=</span> <span class="s1">&#39;scores&#39;</span>
+        <span class="n">STUDENT_NAME</span> <span class="o">=</span> <span class="s1">&#39;name&#39;</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">_constructor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">StudentsDF</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">StudentsDF</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Alice&#39;</span><span class="p">,</span> <span class="s1">&#39;Bob&#39;</span><span class="p">],</span> <span class="n">scores</span><span class="o">=</span><span class="p">[</span><span class="mi">60</span><span class="p">,</span> <span class="mi">50</span><span class="p">]),</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">])</span>
+    <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># __main__.StudentData</span>
+</pre></div>
+
+
+<p>Now, we see that the <code>type(x)</code> is <code>StudentData</code>. Therefore, we can pass around this
+object to our <code>calculate_mean</code> function.</p>
+<div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">calculate_mean</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">StudentsDF</span><span class="p">):</span>
+        <span class="o">.</span>
+        <span class="o">.</span>
+        <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">SCORES</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>   <span class="c1"># we are able to use `df` to access both column labels and values</span>
+</pre></div>
+
+
+<p>Notice, that we just solved the three frustrations we had summarized above.</p>
+<p>a. We pass around the Custom class whose <code>type</code> describes more about the object.</p>
+<p>b. Both the data and the column definitions (formerly, stringy API) are coupled together tightly</p>
+<p>c. Type annotations make more sense now. We do not have to use the generic <code>pd.DataFrame</code> any more.</p>
+<p>Note, that using this construct, it is also possible to create a <code>StudentsDF</code> type instance while
+create a dataframe from a file.</p>
+<div class="highlight"><pre><span></span>    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;/tmp/t.csv&#39;</span><span class="p">)</span>
+    <span class="n">students_df</span> <span class="o">=</span> <span class="n">StudentsDF</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>   <span class="c1"># just pass the original df into the StudentsDF constructor</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">student_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>  <span class="c1"># Index([&#39;name&#39;, &#39;scores&#39;], dtype=&#39;object&#39;)</span>
+</pre></div>
+
+
+<h1>Automating this class generation.</h1>
+<p>Using a simple script like the one shown below, we can automate creation of some of the boiler plate code.
+The following code creates and prints out a <code>class</code> definition based on the columns read from the file.
+This kind of script can be used as a one time set up tool to create a bunch of subclasses of the DataFrame.</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+
+<span class="k">class</span> <span class="nc">DFClassGenerator</span><span class="p">:</span>
+
+    <span class="n">CLASS_HEADER</span> <span class="o">=</span> <span class="s1">&#39;class {class_name}(pd.DataFrame):&#39;</span>
+    <span class="n">COLUMNS</span> <span class="o">=</span> <span class="s1">&#39;    {var} = &quot;{label}&quot;&#39;</span>   <span class="c1"># we cheat an encode 4 spaces here,for demo</span>
+
+    <span class="n">CONSTRUCTOR</span> <span class="o">=</span>  <span class="p">(</span><span class="s2">&quot;    @property</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="s2">&quot;    def _constructor(self):</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="s2">&quot;        return {class_name}&quot;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">generate_class</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">class_name</span><span class="p">):</span>
+
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">COLUMNS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">label</span><span class="o">=</span><span class="n">c</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span> <span class="c1"># works for single hierarchical column index</span>
+
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">CLASS_HEADER</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">class_name</span><span class="o">=</span><span class="n">class_name</span><span class="p">)]</span>
+        <span class="n">constructor</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">CONSTRUCTOR</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">class_name</span><span class="o">=</span><span class="n">class_name</span><span class="p">)</span>
+        <span class="n">source_code</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span> <span class="o">+</span> <span class="n">cols</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">constructor</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">source_code</span><span class="p">)</span>
+</pre></div>
+
+
+<p>We can invoke this function every time we want to generate a new DF type.For example to generate our StudentDF class we
+do the following.</p>
+<div class="highlight"><pre><span></span>    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">student_file</span><span class="p">)</span>
+    <span class="n">source_code</span> <span class="o">=</span> <span class="n">DFClassgenerator</span><span class="o">.</span><span class="n">generate_class</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;StudentDF&#39;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">source_code</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>    <span class="k">class</span> <span class="nc">StudentsDF</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="n">SCORES</span> <span class="o">=</span> <span class="s1">&#39;scores&#39;</span>
+        <span class="n">NAME</span> <span class="o">=</span> <span class="s1">&#39;name&#39;</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">_construct</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">StudentsDF</span>
+</pre></div>
+
+
+<p>Then, we have the class we need.</p>
+<p>Of course, a lot more enhancements can be built into this generation class. Some of the enhancements that
+can be added are as follows:</p>
+<ol>
+<li>
+<p>Ability to create a symbolic name for Index columns</p>
+</li>
+<li>
+<p>Handle multi-hierarchical columns</p>
+</li>
+<li>
+<p>Provide a default converter functions if a type-conversion dictionary is provided.</p>
+</li>
+<li>
+<p>...etc..</p>
+</li>
+</ol>
+<h1>Summary</h1>
+<p>There are lot of scenarios in our production code where it would help
+to annotate and pass around a rich data structure like a DataFrame by
+binding them with symbolic column names. Providing more meaningful type
+hinting also adds needed documentation. Subclassing the dataframe is
+one approach to help us accomplish those goals.</p>
+<h1>References</h1>
+<p><a href="https://pandas.pydata.org/pandas-docs/stable/internals.html#subclassing-pandas-data-structures">Pandas Subclassing</a></p>
+<p><a href="https://github.com/geopandas/geopandas/blob/master/geopandas/geodataframe.py">Example of Pandas Subclassing - GeoPandas</a></p>
+<p><a href="https://stackoverflow.com/questions/22155951/how-to-subclass-pandas-dataframe">SO Question regarding Subclassing</a></p>
+
+
+  </article>
+</section>
+    <footer>
+        <hr>
+        <div class="social">
+            <ul>
+                <li><a href="http://github.com/gdevanla">GitHub</a></li>
+                <li><a href="http://twitter.com/grdvnl">Twitter</a></li>
+            </ul>
+            <ul>
+                <li>
+                    Powered by Pelican
+                </li>
+            </ul>
+        </div><!-- /.social -->
+
+
+<!--  -->
+
+</body>
+</html>
