@@ -57,11 +57,11 @@ nav li {
 }
 
 body {
-  width: 600px;
+  width: 800px;
   margin: 2em auto 2em auto;
   text-align: center;
   background-color: white;
-  font: 14px verdana, inconsolata, helvetica, arial, clean, sans-serif;
+  font: 16px verdana, inconsolata, helvetica, arial, clean, sans-serif;
   *font-size: small;
   //border: solid;
 }
@@ -110,14 +110,20 @@ pre {
   padding: 10px 0;
   margin: 10px 0;
   font-weight: normal;
-  font-size: 10px;
+  font-size: 16px;
 }
 
 linenos {
-    font-size: 8px;
+    font-size: 10px;
 }
 
+/* code { */
+/*     font-size: 15px; */
+/*     background-color: white; */
+/* } */
+
 code {
-    font-size: 10px;
-    background-color: lightgrey;
+    padding: 1px 5px 1px 5px;
+    font-family: Consolas, Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace, serif;
+    background-color: #eeeeee;
 }

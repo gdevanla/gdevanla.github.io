@@ -10,8 +10,8 @@
         <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
 
         <link rel="stylesheet" href="/theme/css/main.css" />
-        <link rel="stylesheet" href="/theme/css/pygment.css"/>
-        <link rel="stylesheet" href="/theme/css/emacs.css"/>
+        <!-- <link rel="stylesheet" href="/theme/css/pygment.css"/> -->
+        <link rel="stylesheet" href="/theme/css/default.css"/>
 
 
            <script type="text/javascript">
@@ -53,7 +53,7 @@
                     <li><a href="/index.html">posts</a></li>
                     <li><a href="/archives.html">archives</a></li>
                     <li><a href="/pages/who-am-i.html">about</a></li>
-                    <li><a href="/books.html">book</a></li>
+                    <li><a href="/pages/books.html">book</a></li>
             </ul>
         </nav>
     </header><!-- /#banner -->
@@ -72,53 +72,43 @@
     </header>
     <p>Steps required to build and deploy a Scotty-based web application</p>
 <h2>Getting the stack environment ready</h2>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span> stack new helloscotty scotty-hello-world
+<div class="highlight"><pre><span></span> stack new helloscotty scotty-hello-world
  stack build
 </pre></div>
-</td></tr></table>
+
 
 <p>update template to use scotty &gt;= 0.11</p>
 <p>Binary file available at</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    .stack-work/install/x86_64-linux/lts-5.18/7.10.3/bin/helloscotty
+<div class="highlight"><pre><span></span>    .stack-work/install/x86_64-linux/lts-5.18/7.10.3/bin/helloscotty
 </pre></div>
-</td></tr></table>
+
 
 <p>Amazon Elastic Beanstalk does not have a way to directly deploy Haskell based web apps.</p>
 <p>So, we use the docker container to deploy our web app</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">docker</span><span class="p p-Indicator">:</span>
+<div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">docker</span><span class="p p-Indicator">:</span>
     <span class="l l-Scalar l-Scalar-Plain">enable</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
     <span class="l l-Scalar l-Scalar-Plain">repo</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">fpco/stack-build</span>
 </pre></div>
-</td></tr></table>
 
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    stack docker pull
+
+<div class="highlight"><pre><span></span>    stack docker pull
 </pre></div>
-</td></tr></table>
 
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>$ stack docker pull
+
+<div class="highlight"><pre><span></span>$ stack docker pull
 Pulling image from registry: <span class="s1">&#39;fpco/stack-build:lts-7.14&#39;</span>
 lts-7.14: Pulling from fpco/stack-build
 
 Digest: sha256:562d2fcb1c08f893700a2445b96c1310b8b8836edf083d82982d39caa310cdc8
 Status: Downloaded newer image <span class="k">for</span> fpco/stack-build:lts-7.14
 </pre></div>
-</td></tr></table>
 
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>stack build
+
+<div class="highlight"><pre><span></span>stack build
 
 stack --docker-run-args<span class="o">=</span><span class="s1">&#39;--net=bridge --publish=3000:3000&#39;</span> <span class="nb">exec</span> helloscotty
 </pre></div>
-</td></tr></table>
+
 
 <p>This ensures your web app build successfully with the new docker image. In addition, we will need
 the executable the build generated.</p>

@@ -10,8 +10,8 @@
         <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
 
         <link rel="stylesheet" href="/theme/css/main.css" />
-        <link rel="stylesheet" href="/theme/css/pygment.css"/>
-        <link rel="stylesheet" href="/theme/css/emacs.css"/>
+        <!-- <link rel="stylesheet" href="/theme/css/pygment.css"/> -->
+        <link rel="stylesheet" href="/theme/css/default.css"/>
 
 
            <script type="text/javascript">
@@ -53,7 +53,7 @@
                     <li><a href="/index.html">posts</a></li>
                     <li><a href="/archives.html">archives</a></li>
                     <li><a href="/pages/who-am-i.html">about</a></li>
-                    <li><a href="/books.html">book</a></li>
+                    <li><a href="/pages/books.html">book</a></li>
             </ul>
         </nav>
     </header><!-- /#banner -->
@@ -64,8 +64,8 @@
         <a class="title" href="/drafts/phantom-types-in-haskell.html" rel="bookmark"
            title="Permalink to Phantom Types">Phantom Types</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2016-09-12T21:28:35.195796-07:00">
-                    09-12-2016
+                <abbr class="published" title="2017-05-12T17:45:36.496893-07:00">
+                    05-12-2017
                 </abbr>
                 In <a href="/category/functional-programming-haskell-data-structures.html">functional programming, Haskell, data-structures</a>.       </div><!-- /.entry-content -->
 
@@ -81,63 +81,47 @@ thrown away by the compiler during runtime.</p>
 objects that transition from be incomplete to complete objects that
 can be used later on during the execution.</p>
 <p>In the below example, say we have a record type called</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">GhostOrIllusion</span> <span class="ow">=</span>  <span class="kt">Ghost</span> <span class="o">|</span> <span class="kt">Illusion</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">GhostOrIllusion</span> <span class="ow">=</span>  <span class="kt">Ghost</span> <span class="o">|</span> <span class="kt">Illusion</span>
     <span class="kr">data</span> <span class="kt">MyPhantomType</span> <span class="ow">=</span> <span class="kt">MyPhantomType</span> <span class="p">{</span><span class="n">currentState</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">phantomType</span><span class="ow">::</span><span class="kt">GhostOrIllusion</span><span class="p">}</span>
          <span class="kr">deriving</span> <span class="p">(</span><span class="kt">Show</span><span class="p">)</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Now, say we want functions only to accept an instance of</p>
 <p><code>MyPhantomType</code> that has <code>phantomType</code> set to
 <code>Illusion</code>. That is, we want functions defined as</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">usePhantomType</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="kt">Illusion</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
+<div class="highlight"><pre><span></span>    <span class="n">usePhantomType</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="kt">Illusion</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
     <span class="n">usePhantomType</span> <span class="n">a</span> <span class="ow">=</span> <span class="s">&quot;Now I can use the Phantom Type &quot;</span> <span class="o">++</span> <span class="n">show</span> <span class="n">a</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>We can try is to parameterize the record type, like</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">GhostOrIllusion</span> <span class="ow">=</span>  <span class="kt">Ghost</span> <span class="o">|</span> <span class="kt">Illusion</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">GhostOrIllusion</span> <span class="ow">=</span>  <span class="kt">Ghost</span> <span class="o">|</span> <span class="kt">Illusion</span>
     <span class="kr">data</span> <span class="kt">MyPhantomType</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">MyPhantomType</span> <span class="p">{</span><span class="n">currentState</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">phantomType</span><span class="ow">::</span><span class="n">a</span><span class="p">}</span>
          <span class="kr">deriving</span> <span class="p">(</span><span class="kt">Show</span><span class="p">)</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>But, even then you can only define functions such as</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">usePhantomType</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="kt">GhostOrIllusion</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
+<div class="highlight"><pre><span></span>    <span class="n">usePhantomType</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="kt">GhostOrIllusion</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>That is you cannot use value constructors, <code>Ghost</code> or
 <code>Illusion</code>. Using phantom-types becomes a useful trick in such
 situations.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">Ghost</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">Ghost</span>
     <span class="kr">data</span> <span class="kt">Illusion</span>
     <span class="kr">data</span> <span class="kt">MyPhantomType</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">MyPhantomType</span> <span class="p">{</span><span class="n">currentState</span><span class="ow">::</span><span class="kt">String</span><span class="p">}</span> <span class="kr">deriving</span> <span class="p">(</span><span class="kt">Show</span><span class="p">)</span>
 
     <span class="n">usePhantomType</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="kt">Illusion</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
     <span class="n">usePhantomType</span> <span class="n">a</span> <span class="ow">=</span> <span class="s">&quot;Now I can use the Phantom Type &quot;</span> <span class="o">++</span> <span class="n">show</span> <span class="n">a</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>To create phantom types, again we can just take the help of the
 runtime.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">updateBelief</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="kt">Ghost</span> <span class="ow">-&gt;</span> <span class="kt">MyPhantomType</span> <span class="kt">Illusion</span>
+<div class="highlight"><pre><span></span>    <span class="n">updateBelief</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="kt">Ghost</span> <span class="ow">-&gt;</span> <span class="kt">MyPhantomType</span> <span class="kt">Illusion</span>
     <span class="n">updateBelief</span> <span class="n">a</span> <span class="ow">=</span> <span class="n">a</span> <span class="p">{</span><span class="n">currentState</span><span class="ow">=</span><span class="s">&quot;nomoreafraid&quot;</span><span class="p">}</span>
 
     <span class="n">createPhantomType</span> <span class="ow">::</span> <span class="kt">String</span> <span class="ow">-&gt;</span> <span class="kt">MyPhantomType</span> <span class="kt">Ghost</span>
@@ -145,7 +129,7 @@ runtime.</p>
 
     <span class="kr">let</span> <span class="n">p</span> <span class="ow">=</span> <span class="n">usePhantomType</span> <span class="o">$</span> <span class="n">updateBelief</span> <span class="o">$</span> <span class="n">createPhantomType</span> <span class="s">&quot;afraid&quot;</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Let's quickly walk through what we did that. We first call
 <code>createPhantomtype</code> method that will create a <code>Ghost</code> type for
@@ -167,11 +151,10 @@ tied to the types. We were able to move an attribute from record into
 its type signature, and use that information to create functions that
 work on specific types. Also, note, that this definition, does not
 stop us from using the generic types in other functions, such as</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>        <span class="n">useBothPhantomTypes</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
+<div class="highlight"><pre><span></span>        <span class="n">useBothPhantomTypes</span> <span class="ow">::</span> <span class="kt">MyPhantomType</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
         <span class="n">useBothPhantomTypes</span> <span class="n">a</span> <span class="ow">=</span> <span class="n">show</span> <span class="n">a</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>This function will accept both <code>Ghost</code> or <code>Illusion</code> instances
 of MyPhantomType. In fact, it does not care what the value of <code>a</code>

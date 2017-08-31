@@ -10,8 +10,8 @@
         <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
 
         <link rel="stylesheet" href="/theme/css/main.css" />
-        <link rel="stylesheet" href="/theme/css/pygment.css"/>
-        <link rel="stylesheet" href="/theme/css/emacs.css"/>
+        <!-- <link rel="stylesheet" href="/theme/css/pygment.css"/> -->
+        <link rel="stylesheet" href="/theme/css/default.css"/>
 
 
            <script type="text/javascript">
@@ -53,7 +53,7 @@
                     <li><a href="/index.html">posts</a></li>
                     <li><a href="/archives.html">archives</a></li>
                     <li><a href="/pages/who-am-i.html">about</a></li>
-                    <li><a href="/books.html">book</a></li>
+                    <li><a href="/pages/books.html">book</a></li>
             </ul>
         </nav>
     </header><!-- /#banner -->
@@ -64,8 +64,8 @@
         <a class="title" href="/drafts/parameteric-types-in-haskell.html" rel="bookmark"
            title="Permalink to Parametric Types in Haskell">Parametric Types in Haskell</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2016-09-05T07:14:44.734308-07:00">
-                    09-05-2016
+                <abbr class="published" title="2017-05-12T17:45:36.496893-07:00">
+                    05-12-2017
                 </abbr>
                 In <a href="/category/functional-programming-haskell-data-structures-design.html">functional programming, Haskell, data-structures, design</a>.       </div><!-- /.entry-content -->
 
@@ -77,44 +77,33 @@ have data constructors that can take be defined with parameterized
 types.</p>
 <p>Some examples:</p>
 <p>Here we define a parameterized record type.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">Instrument</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">Instrument</span> <span class="p">{</span><span class="n">instrumentName</span><span class="ow">::</span><span class="kt">String</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">Instrument</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">Instrument</span> <span class="p">{</span><span class="n">instrumentName</span><span class="ow">::</span><span class="kt">String</span>
                                     <span class="p">,</span> <span class="n">instrumentLevel</span><span class="ow">::</span><span class="n">a</span><span class="p">}</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>The parameterized record type can be used in function's that are also parameterized.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">useGenericInstrument</span> <span class="ow">::</span> <span class="kt">Instrument</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
+<div class="highlight"><pre><span></span>    <span class="n">useGenericInstrument</span> <span class="ow">::</span> <span class="kt">Instrument</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
     <span class="n">useGenericInstrument</span> <span class="n">i</span> <span class="ow">=</span> <span class="n">instrumentName</span> <span class="n">i</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>We could constrain the functions to only take, certain instances of
 parameterized types,</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">useGenericInstrumentsParametricType</span> <span class="ow">::</span> <span class="p">(</span><span class="kt">Num</span> <span class="n">a</span><span class="p">,</span> <span class="kt">Eq</span> <span class="n">a</span><span class="p">)</span> <span class="ow">=&gt;</span> <span class="kt">Instrument</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="n">a</span>
+<div class="highlight"><pre><span></span>    <span class="n">useGenericInstrumentsParametricType</span> <span class="ow">::</span> <span class="p">(</span><span class="kt">Num</span> <span class="n">a</span><span class="p">,</span> <span class="kt">Eq</span> <span class="n">a</span><span class="p">)</span> <span class="ow">=&gt;</span> <span class="kt">Instrument</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="n">a</span>
     <span class="n">useGenericInstrumentsParametricType</span> <span class="n">i</span> <span class="ow">=</span> <span class="n">instrumentLevel</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">10</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Or, define functions for specific types</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">useSpecificInstrumentType</span> <span class="ow">::</span> <span class="kt">Instrument</span> <span class="kt">Int</span> <span class="ow">-&gt;</span> <span class="kt">Int</span>
+<div class="highlight"><pre><span></span>    <span class="n">useSpecificInstrumentType</span> <span class="ow">::</span> <span class="kt">Instrument</span> <span class="kt">Int</span> <span class="ow">-&gt;</span> <span class="kt">Int</span>
     <span class="n">useSpecificInstrumentType</span> <span class="n">i</span> <span class="ow">=</span> <span class="n">instrumentLevel</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">10</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>We can also use ad-hoc polymorphism(link here), to specify overloaded
 functions for different types on <code>Instrument</code>.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7
-8</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">class</span> <span class="kt">MethodsThatWorkWithInstruments</span> <span class="n">a</span> <span class="kr">where</span>
+<div class="highlight"><pre><span></span>    <span class="kr">class</span> <span class="kt">MethodsThatWorkWithInstruments</span> <span class="n">a</span> <span class="kr">where</span>
       <span class="n">useLevel</span><span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">Int</span>
 
     <span class="kr">instance</span> <span class="kt">MethodsThatWorkWithInstruments</span> <span class="p">(</span><span class="kt">Instrument</span> <span class="kt">Int</span><span class="p">)</span> <span class="kr">where</span>
@@ -123,64 +112,48 @@ functions for different types on <code>Instrument</code>.</p>
     <span class="kr">instance</span> <span class="kt">MethodsThatWorkWithInstruments</span> <span class="p">(</span><span class="kt">Instrument</span> <span class="kt">String</span><span class="p">)</span> <span class="kr">where</span>
       <span class="n">useLevel</span> <span class="n">i</span> <span class="ow">=</span> <span class="p">(</span><span class="n">read</span> <span class="o">$</span> <span class="p">(</span><span class="n">instrumentLevel</span> <span class="n">i</span><span class="p">)</span> <span class="ow">::</span> <span class="kt">Int</span><span class="p">)</span> <span class="o">+</span> <span class="mi">10</span>
 </pre></div>
-</td></tr></table>
+
 
 <h2>Nested Parametric Types</h2>
 <p>Parametric types can be nested into other types. For example,</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">InnerRecord</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">InnerRecord</span> <span class="p">{</span><span class="n">innerRecordName</span><span class="ow">::</span><span class="kt">String</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">InnerRecord</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">InnerRecord</span> <span class="p">{</span><span class="n">innerRecordName</span><span class="ow">::</span><span class="kt">String</span>
                                       <span class="p">,</span> <span class="n">innerRecordType</span><span class="ow">::</span><span class="n">a</span><span class="p">}</span> <span class="kr">deriving</span> <span class="p">(</span><span class="kt">Show</span><span class="p">)</span>
 
     <span class="kr">data</span> <span class="kt">OuterRecord</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">OuterRecord</span> <span class="p">{</span>
           <span class="n">outerRecordName</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span>
             <span class="n">outerRecordInnerRecord</span><span class="ow">::</span><span class="kt">InnerRecord</span> <span class="n">a</span><span class="p">}</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>It is important to note that, nesting parametric types could get
 cubmersome, if we have multiple levels of wrapping around
 parameterized types. The type variable <code>a</code> will have to be passed
 all the way from the outermost declaration. For example,</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>   <span class="c1">--- type variables can be generic all the way from the top</span>
+<div class="highlight"><pre><span></span>   <span class="c1">--- type variables can be generic all the way from the top</span>
    <span class="kr">data</span> <span class="kt">OuterRecords</span> <span class="n">a</span> <span class="ow">=</span> <span class="p">[</span><span class="kt">OuterRecord</span> <span class="n">a</span><span class="p">]</span>
 
    <span class="c1">-- or specialized at some top level</span>
    <span class="kr">data</span> <span class="kt">OuterIntRecords</span> <span class="ow">=</span> <span class="p">[</span><span class="kt">OuterRecord</span> <span class="n">int</span><span class="p">]</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>We probably want to specialize the type as soon as we can at the lower
 level. We could do this in 2 ways,</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">InnerRecordType</span> <span class="ow">=</span> <span class="kt">Good</span> <span class="o">|</span> <span class="kt">Bad</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">InnerRecordType</span> <span class="ow">=</span> <span class="kt">Good</span> <span class="o">|</span> <span class="kt">Bad</span>
 
     <span class="kr">data</span> <span class="kt">OuterRecord</span> <span class="ow">=</span> <span class="kt">OuterRecord</span> <span class="p">{</span>
          <span class="n">outerRecordName</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span>
          <span class="n">outerRecordInnerRecord</span><span class="ow">::</span><span class="kt">InnerRecord</span> <span class="kt">InnerRecordType</span><span class="p">}</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Or, if we want totally independent types,</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">Up</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">Up</span>
     <span class="kr">data</span> <span class="kt">Down</span>
     <span class="kr">type</span> <span class="kt">GoodRecord</span> <span class="ow">=</span> <span class="kt">InnerRecord</span> <span class="kt">Up</span>
     <span class="kr">type</span> <span class="kt">BadRecord</span> <span class="ow">=</span> <span class="kt">InnerRecord</span> <span class="kt">Down</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>The former option is useful, if we have to create a list of
 OutermostRecords or group them together in some other ways.</p>

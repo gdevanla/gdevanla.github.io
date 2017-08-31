@@ -10,8 +10,8 @@
         <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
 
         <link rel="stylesheet" href="/theme/css/main.css" />
-        <link rel="stylesheet" href="/theme/css/pygment.css"/>
-        <link rel="stylesheet" href="/theme/css/emacs.css"/>
+        <!-- <link rel="stylesheet" href="/theme/css/pygment.css"/> -->
+        <link rel="stylesheet" href="/theme/css/default.css"/>
 
 
            <script type="text/javascript">
@@ -53,7 +53,7 @@
                     <li><a href="/index.html">posts</a></li>
                     <li><a href="/archives.html">archives</a></li>
                     <li><a href="/pages/who-am-i.html">about</a></li>
-                    <li><a href="/books.html">book</a></li>
+                    <li><a href="/pages/books.html">book</a></li>
             </ul>
         </nav>
     </header><!-- /#banner -->
@@ -64,8 +64,8 @@
         <a class="title" href="/drafts/polymorphism-in-haskell.html" rel="bookmark"
            title="Permalink to Polymorphism in Haskell">Polymorphism in Haskell</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2016-09-05T07:13:19.889577-07:00">
-                    09-05-2016
+                <abbr class="published" title="2017-05-12T17:45:36.496893-07:00">
+                    05-12-2017
                 </abbr>
                 In <a href="/category/functional-programming-haskell-data-structures.html">functional programming, Haskell, data-structures</a>.       </div><!-- /.entry-content -->
 
@@ -96,22 +96,13 @@ your own implementation:</p>
 <h3>Overloading on one argument of a function.</h3>
 <p>Say we have two record types, and we want an overloaded function
 called <code>checkValid</code> to work with both types.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">ClassRoom</span> <span class="ow">=</span> <span class="kt">ClassRoom</span> <span class="p">{</span><span class="n">className</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">studentCount</span><span class="ow">::</span><span class="kt">Int</span><span class="p">}</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">ClassRoom</span> <span class="ow">=</span> <span class="kt">ClassRoom</span> <span class="p">{</span><span class="n">className</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">studentCount</span><span class="ow">::</span><span class="kt">Int</span><span class="p">}</span>
     <span class="kr">data</span> <span class="kt">SportsTeam</span> <span class="ow">=</span>  <span class="kt">SportsTeam</span> <span class="p">{</span><span class="n">teamName</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">memberCount</span><span class="ow">::</span><span class="kt">Int</span><span class="p">}</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>We can use type classes to implement the overloaded functions</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7
-8
-9</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="c1">-- One one parameter</span>
+<div class="highlight"><pre><span></span>    <span class="c1">-- One one parameter</span>
     <span class="kr">class</span> <span class="kt">OnOneParameter</span> <span class="n">a</span> <span class="kr">where</span>
       <span class="n">checkValid</span> <span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
 
@@ -121,22 +112,17 @@ called <code>checkValid</code> to work with both types.</p>
     <span class="kr">instance</span> <span class="kt">OnOneParameter</span> <span class="kt">SportsTeam</span> <span class="kr">where</span>
       <span class="n">checkValid</span> <span class="n">v</span> <span class="ow">=</span>  <span class="n">memberCount</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">memberCount</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">10</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>This can be easily tested using the below snippet</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">mainp</span> <span class="ow">::</span> <span class="kt">IO</span> <span class="nb">()</span>
+<div class="highlight"><pre><span></span>    <span class="n">mainp</span> <span class="ow">::</span> <span class="kt">IO</span> <span class="nb">()</span>
     <span class="n">main</span> <span class="ow">=</span> <span class="kr">do</span>
       <span class="kr">let</span> <span class="n">class_room</span> <span class="ow">=</span> <span class="kt">ClassRoom</span> <span class="p">{</span><span class="n">className</span><span class="ow">=</span><span class="s">&quot;Math&quot;</span><span class="p">,</span> <span class="n">studentCount</span><span class="ow">=</span><span class="mi">10</span><span class="p">}</span>
           <span class="n">sports_team</span> <span class="ow">=</span> <span class="kt">SportsTeam</span> <span class="p">{</span><span class="n">teamName</span><span class="ow">=</span><span class="s">&quot;L&quot;</span><span class="p">,</span> <span class="n">memberCount</span><span class="ow">=</span><span class="mi">6</span><span class="p">}</span>
       <span class="n">putStrLn</span> <span class="o">$</span> <span class="n">show</span> <span class="o">$</span> <span class="n">checkValid</span> <span class="n">class_room</span>
       <span class="n">putStrLn</span> <span class="o">$</span> <span class="n">show</span> <span class="o">$</span> <span class="n">checkValid</span> <span class="n">sports_team</span>
 </pre></div>
-</td></tr></table>
+
 
 <h3>Overloading on more than one argument.</h3>
 <p>If we want to over-load the function with more than one argument, then
@@ -146,21 +132,7 @@ extensions, we get the power to dispatch on multiple arguments.</p>
 three different instances of the <code>checkValidTogether</code> method. Each of
 these instances will be called based on the types of both the
 arguments at the call site.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="c1">-- On 2 parameters</span>
+<div class="highlight"><pre><span></span>    <span class="c1">-- On 2 parameters</span>
     <span class="kr">class</span> <span class="kt">OnTwoParameters</span> <span class="n">a</span> <span class="n">b</span> <span class="kr">where</span>
       <span class="n">checkValidTogether</span> <span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="n">b</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
 
@@ -176,26 +148,18 @@ arguments at the call site.</p>
     <span class="n">checkValid2</span> <span class="ow">::</span> <span class="kt">SportsTeam</span> <span class="ow">-&gt;</span> <span class="kt">SportsTeam</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
     <span class="n">checkValid2</span> <span class="n">a</span> <span class="n">b</span> <span class="ow">=</span> <span class="n">checkValidTogether</span> <span class="n">a</span> <span class="n">b</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Now, how should the compiler treat the definition below</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">testFn</span> <span class="ow">::</span> <span class="p">(</span><span class="kt">OnOneParameter</span> <span class="n">b</span><span class="p">)</span> <span class="ow">=&gt;</span> <span class="kt">ClassRoom</span> <span class="ow">-&gt;</span> <span class="n">b</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
+<div class="highlight"><pre><span></span>    <span class="n">testFn</span> <span class="ow">::</span> <span class="p">(</span><span class="kt">OnOneParameter</span> <span class="n">b</span><span class="p">)</span> <span class="ow">=&gt;</span> <span class="kt">ClassRoom</span> <span class="ow">-&gt;</span> <span class="n">b</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
     <span class="n">testFn</span> <span class="n">a</span> <span class="n">b</span> <span class="ow">=</span> <span class="n">checkValidTogether</span> <span class="n">a</span> <span class="n">b</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Here the compiler, does not know which version of the overloaded
 function should the call be dispatched to. Compiling, the above
 snippet will cause the compile to fail with this error:</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7
-8</pre></div></td><td class="code"><div class="codehilite"><pre><span></span> Overlapping instance error
+<div class="highlight"><pre><span></span> Overlapping instance error
  Overlapping instances for OnTwoParameters ClassRoom b
    arising from a use of ‘checkValidTogether’
  Matching instances:
@@ -204,20 +168,12 @@ snippet will cause the compile to fail with this error:</p>
    instance OnTwoParameters ClassRoom SportsTeam
      -- Defined at /tmp/flycheck10671M3X/Polymorphism.hs:34:10
 </pre></div>
-</td></tr></table>
+
 
 <h3>Overloading on return type</h3>
 <p>Here, the function arguments could be the same, but notice that the
 dispatch is happening on the return type of the function</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7
-8
-9</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    -- On Return Type
+<div class="highlight"><pre><span></span>    -- On Return Type
     class OnReturnType a where
       iAmCalledBasedOnReturnType ::  Int -&gt; a
 
@@ -227,54 +183,34 @@ dispatch is happening on the return type of the function</p>
     instance OnReturnType Int where
       iAmCalledBasedOnReturnType _ = 10
 </pre></div>
-</td></tr></table>
+
 
 <p>Here is the output, from calling the above functions.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>        &gt; iAmCalledBasedOnReturnType 10::Int
+<div class="highlight"><pre><span></span>        &gt; iAmCalledBasedOnReturnType 10::Int
         10
         &gt; iAmCalledBasedOnReturnType 10::Bool
         True
         &gt;
 </pre></div>
-</td></tr></table>
+
 
 <h3>Overloading functions on both argument types and return type</h3>
 <p>This example just builds on the examples we have seen above.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>-- On Return Type and parameters
-class OnReturnTypeAndParams a b where
-  iAmCalledBasedOnReturnTypeAndParams ::  a -&gt; b
+<div class="highlight"><pre><span></span><span class="o">--</span> <span class="nx">On</span> <span class="nx">Return</span> <span class="nx">Type</span> <span class="nx">and</span> <span class="nx">parameters</span>
+<span class="kr">class</span> <span class="nx">OnReturnTypeAndParams</span> <span class="nx">a</span> <span class="nx">b</span> <span class="nx">where</span>
+  <span class="nx">iAmCalledBasedOnReturnTypeAndParams</span> <span class="o">::</span>  <span class="nx">a</span> <span class="o">-&gt;</span> <span class="nx">b</span>
 
-instance OnReturnTypeAndParams Int Bool where
-  iAmCalledBasedOnReturnTypeAndParams a = if a == 1 then True else
-  False
+<span class="nx">instance</span> <span class="nx">OnReturnTypeAndParams</span> <span class="nx">Int</span> <span class="nx">Bool</span> <span class="nx">where</span>
+  <span class="nx">iAmCalledBasedOnReturnTypeAndParams</span> <span class="nx">a</span> <span class="o">=</span> <span class="k">if</span> <span class="nx">a</span> <span class="o">==</span> <span class="mi">1</span> <span class="nx">then</span> <span class="nx">True</span> <span class="k">else</span>
+  <span class="nx">False</span>
 
-instance OnReturnTypeAndParams Bool Int where
-  iAmCalledBasedOnReturnTypeAndParams a = if a then 1 else 0
+<span class="nx">instance</span> <span class="nx">OnReturnTypeAndParams</span> <span class="nx">Bool</span> <span class="nx">Int</span> <span class="nx">where</span>
+  <span class="nx">iAmCalledBasedOnReturnTypeAndParams</span> <span class="nx">a</span> <span class="o">=</span> <span class="k">if</span> <span class="nx">a</span> <span class="nx">then</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Here is the output of using the above code</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7
-8</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    &gt;
+<div class="highlight"><pre><span></span>    &gt;
     &gt; let x_int = 10::Int
     &gt; iAmCalledBasedOnReturnTypeAndParams x_int::Bool
     False
@@ -283,25 +219,19 @@ instance OnReturnTypeAndParams Bool Int where
     1
     &gt;
 </pre></div>
-</td></tr></table>
+
 
 <p>By now, you would have noticed that Haskell provides is constructs
 that lets us a powerful se tof aabstractions using ad-hoc polmorphism.</p>
 <p>As a bonus, here is an example of ad-hoc polymorphism for nested
 types:</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><span class="k">class</span> <span class="n">OnNestedType</span> <span class="n">a</span> <span class="k">where</span>
-  <span class="n">nestedType</span> :: <span class="n">a</span> -&gt; <span class="n">String</span>
+<div class="highlight"><pre><span></span><span class="kr">class</span> <span class="nx">OnNestedType</span> <span class="nx">a</span> <span class="nx">where</span>
+  <span class="nx">nestedType</span> <span class="o">::</span> <span class="nx">a</span> <span class="o">-&gt;</span> <span class="nb">String</span>
 
--- <span class="n">Examples</span> <span class="k">of</span> <span class="n">nested</span> <span class="n">types</span>
-<span class="n">instance</span> (<span class="n">Show</span> <span class="n">a</span>) =&gt; <span class="n">OnNestedType</span>  [<span class="n">a</span>] <span class="k">where</span>
-   <span class="n">nestedType</span> <span class="n">c</span> = <span class="n">show</span> <span class="n">c</span>
+<span class="o">--</span> <span class="nx">Examples</span> <span class="nx">of</span> <span class="nx">nested</span> <span class="nx">types</span>
+<span class="nx">instance</span> <span class="p">(</span><span class="nx">Show</span> <span class="nx">a</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">OnNestedType</span>  <span class="p">[</span><span class="nx">a</span><span class="p">]</span> <span class="nx">where</span>
+   <span class="nx">nestedType</span> <span class="nx">c</span> <span class="o">=</span> <span class="nx">show</span> <span class="nx">c</span>
 </pre></div>
-</td></tr></table>
 
 
   </article>

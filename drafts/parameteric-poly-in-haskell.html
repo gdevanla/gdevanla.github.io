@@ -10,8 +10,8 @@
         <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
 
         <link rel="stylesheet" href="/theme/css/main.css" />
-        <link rel="stylesheet" href="/theme/css/pygment.css"/>
-        <link rel="stylesheet" href="/theme/css/emacs.css"/>
+        <!-- <link rel="stylesheet" href="/theme/css/pygment.css"/> -->
+        <link rel="stylesheet" href="/theme/css/default.css"/>
 
 
            <script type="text/javascript">
@@ -53,7 +53,7 @@
                     <li><a href="/index.html">posts</a></li>
                     <li><a href="/archives.html">archives</a></li>
                     <li><a href="/pages/who-am-i.html">about</a></li>
-                    <li><a href="/books.html">book</a></li>
+                    <li><a href="/pages/books.html">book</a></li>
             </ul>
         </nav>
     </header><!-- /#banner -->
@@ -64,8 +64,8 @@
         <a class="title" href="/drafts/parameteric-poly-in-haskell.html" rel="bookmark"
            title="Permalink to Parametric Polymorphism in Haskell">Parametric Polymorphism in Haskell</a></h2>
       <div class="extra-info">
-                <abbr class="published" title="2016-09-05T07:14:07.829990-07:00">
-                    09-05-2016
+                <abbr class="published" title="2017-05-12T17:45:36.496893-07:00">
+                    05-12-2017
                 </abbr>
                 In <a href="/category/functional-programming-haskell-data-structures-design.html">functional programming, Haskell, data-structures, design</a>.       </div><!-- /.entry-content -->
 
@@ -78,19 +78,14 @@ polymorphism.</p>
 <p>In ad-hoc polymorphism, we specialize functions to work on certain
 types. Using parametric polymorhism, we generalize functions to work
 on a family of types. Say, we have a function defintion,</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="n">incompleteGenericFunction</span> <span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
+<div class="highlight"><pre><span></span>    <span class="n">incompleteGenericFunction</span> <span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
     <span class="n">incompleteGenericFunction</span> <span class="n">arg</span> <span class="ow">=</span> <span class="n">doSomethingWithTypeA</span> <span class="n">arg</span>
 
 
     <span class="n">doSomethingWithTypeA</span> <span class="ow">::</span> <span class="kt">Int</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
     <span class="n">doSomethingWithTypeA</span> <span class="n">arg</span> <span class="ow">=</span> <span class="n">arg</span> <span class="o">&gt;</span> <span class="mi">10</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>In the above code, we could attempt to define
 <code>doSomethingwithtypeA</code> method, along with the function
@@ -101,17 +96,13 @@ function only accepts an <code>Int</code>, but we declared that
 <code>incompletegenericfunction</code> is accepting a more generic
 type. Here is the error, we will see if we attemt to compile the above
 code.</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kt">Couldn&#39;t</span> <span class="n">match</span> <span class="n">expected</span> <span class="kr">type</span> <span class="err">‘</span><span class="kt">Int</span><span class="err">’</span> <span class="n">with</span> <span class="n">actual</span> <span class="kr">type</span> <span class="err">‘</span><span class="n">a</span><span class="err">’</span>
+<div class="highlight"><pre><span></span>    <span class="kt">Couldn&#39;t</span> <span class="n">match</span> <span class="n">expected</span> <span class="kr">type</span> <span class="err">‘</span><span class="kt">Int</span><span class="err">’</span> <span class="n">with</span> <span class="n">actual</span> <span class="kr">type</span> <span class="err">‘</span><span class="n">a</span><span class="err">’</span>
            <span class="err">‘</span><span class="n">a</span><span class="err">’</span> <span class="n">is</span> <span class="n">a</span> <span class="n">rigid</span> <span class="kr">type</span> <span class="n">variable</span> <span class="n">bound</span> <span class="n">by</span>
                      <span class="n">the</span> <span class="kr">type</span> <span class="n">signature</span> <span class="n">for</span> <span class="n">incompleteGenericFunction</span> <span class="ow">::</span> <span class="n">a</span>
            <span class="ow">-&gt;</span> <span class="kt">Bool</span>
                      <span class="n">at</span> <span class="n">app</span><span class="o">/</span><span class="kt">Polymorphism</span><span class="o">.</span><span class="n">hs</span><span class="kt">:</span><span class="mi">10</span><span class="kt">:</span><span class="mi">30</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Here, we have to prove to the compiler that any type <code>a</code> that will
 be passed to <code>inCompleteGenericfunction</code> will have a corresponding
@@ -121,14 +112,7 @@ finite. We can sort this out, by using <code>type classes</code>. We can be
 explicit and inform the compiler that, a function taking a generic
 type, will accept a generic type provided it provides an instance of a
 particular or set of type classes. For example,</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3
-4
-5
-6
-7
-8</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">class</span> <span class="kt">ParametricPolyExample</span> <span class="n">a</span> <span class="kr">where</span>
+<div class="highlight"><pre><span></span>    <span class="kr">class</span> <span class="kt">ParametricPolyExample</span> <span class="n">a</span> <span class="kr">where</span>
       <span class="n">doSomethingWithTypeA</span><span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
 
     <span class="kr">instance</span> <span class="kt">ParametricPolyExample</span> <span class="kt">Int</span> <span class="kr">where</span>
@@ -137,16 +121,14 @@ particular or set of type classes. For example,</p>
     <span class="kr">instance</span> <span class="kt">ParametricPolyExample</span> <span class="kt">String</span> <span class="kr">where</span>
       <span class="n">doSomethingWithTypeA</span> <span class="n">x</span> <span class="ow">=</span> <span class="n">len</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">10</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>And, then we can use this information in our generic function, as</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2
-3</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="c1">--Example of parametric polymorphism</span>
+<div class="highlight"><pre><span></span>    <span class="c1">--Example of parametric polymorphism</span>
     <span class="n">aGenericFunction</span> <span class="ow">::</span> <span class="p">(</span><span class="kt">ParametricPolyExample</span> <span class="n">a</span><span class="p">)</span> <span class="ow">=&gt;</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">Bool</span>
     <span class="n">aGenericFunction</span> <span class="n">arg</span> <span class="ow">=</span> <span class="n">doSomethingWithTypeA</span> <span class="n">arg</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>Here we explicity promised the compiler that our
 <code>aGenericFunction</code> , for all types <code>a</code>, this function will be
@@ -157,22 +139,7 @@ one or more type families.</p>
 parametric polymorphism in terms of functions for simple types. These
 same examples can be extended to paramteric types as well.</p>
 <p>Here is an example,</p>
-<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15
-16</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="kr">data</span> <span class="kt">Student</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">Student</span> <span class="p">{</span><span class="n">name</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">level</span><span class="ow">::</span><span class="n">a</span><span class="p">}</span>
+<div class="highlight"><pre><span></span>    <span class="kr">data</span> <span class="kt">Student</span> <span class="n">a</span> <span class="ow">=</span> <span class="kt">Student</span> <span class="p">{</span><span class="n">name</span><span class="ow">::</span><span class="kt">String</span><span class="p">,</span> <span class="n">level</span><span class="ow">::</span><span class="n">a</span><span class="p">}</span>
 
     <span class="kr">class</span> <span class="kt">StudentTypeClass</span> <span class="n">a</span> <span class="kr">where</span>
       <span class="n">useStudent</span> <span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
@@ -189,7 +156,7 @@ same examples can be extended to paramteric types as well.</p>
       <span class="n">useStudentWithLevelAsString</span> <span class="ow">::</span> <span class="kt">Student</span> <span class="kt">String</span> <span class="ow">-&gt;</span> <span class="kt">String</span>
       <span class="n">useStudentWithLevelAsString</span> <span class="n">s</span> <span class="ow">=</span> <span class="n">level</span> <span class="n">s</span>
 </pre></div>
-</td></tr></table>
+
 
 <p>In the above example, we have <code>useStudent</code> implementing version
 for types of of <code>levels</code>, whereas the
