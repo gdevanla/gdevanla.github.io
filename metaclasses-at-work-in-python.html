@@ -53,7 +53,7 @@
                     <li><a href="/index.html">posts</a></li>
                     <li><a href="/archives.html">archives</a></li>
                     <li><a href="/pages/who-am-i.html">about</a></li>
-                    <li><a href="/pages/books.html">book</a></li>
+                    <li><a href="/books.html">book</a></li>
             </ul>
         </nav>
     </header><!-- /#banner -->
@@ -77,17 +77,40 @@ meta-classes facility of Python.</p>
 <p>In many instances, we end up with tests that check for a common set of
 invariants for a large set of inputs.  For example, say we need to
 test a function such as</p>
-<div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Args:  x, y z are Bool&#39;s</span>
 <span class="sd">    &#39;&#39;&#39;</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">!=</span> <span class="n">y</span> <span class="ow">and</span> <span class="n">x</span> <span class="o">!=</span> <span class="n">z</span> <span class="ow">or</span> <span class="n">x</span> <span class="ow">and</span> <span class="n">z</span><span class="p">)</span>
 </pre></div>
-
+</td></tr></table>
 
 <p>To generate a comprehensive set of tests for this function, we will
 need 8 tests, which all look the same except for the input that will vary.</p>
-<div class="highlight"><pre><span></span>    <span class="k">class</span> <span class="nc">TestUnit</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">TestFunctionFooMeta</span><span class="p">):</span>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">class</span> <span class="nc">TestUnit</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">TestFunctionFooMeta</span><span class="p">):</span>
         <span class="k">def</span> <span class="nf">check_common_invariants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual_value</span><span class="p">,</span> <span class="n">expected_value</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">actual_value</span><span class="p">,</span> <span class="n">expected_value</span><span class="p">)</span>
 
@@ -108,7 +131,7 @@ need 8 tests, which all look the same except for the input that will vary.</p>
             <span class="o">.</span>
             <span class="o">.</span>
 </pre></div>
-
+</td></tr></table>
 
 <p>Our objective here is to avoid such bolierplate code. In the
 real-world the 8 scenerios expresssed here could translate into 100's of
@@ -120,7 +143,25 @@ descriptive error reporting mechanism of provided by the test runtime.
 For example, if a test fails, you really would not know which input
 the tests failed for. It would be an anti-pattern to take such
 an approach. Here is an example of the anti-pattern.</p>
-<div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">test_all_scenarios</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">def</span> <span class="nf">test_all_scenarios</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        This test is an anti-pattern. Looping around all inputs</span>
 <span class="sd">        does not provide a good error reporting mechanism when test fails</span>
@@ -140,7 +181,7 @@ an approach. Here is an example of the anti-pattern.</p>
             <span class="n">r</span> <span class="o">=</span> <span class="n">foo</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">assertEquals</span><span class="p">(</span><span class="n">expected_results</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">r</span><span class="p">)</span>
 </pre></div>
-
+</td></tr></table>
 
 <p>In the real world, this would apply to any complex application that deals
 with lot numeric data and produces a large data set of outputs. It would
@@ -157,14 +198,19 @@ Python's meta-classes facility to auto-generate our tests.</p>
 <li>We will need a factory function that will create our test methods,
 that we will attach to our test class.</li>
 </ol>
-<div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">create_func</span><span class="p">(</span><span class="n">test_name</span><span class="p">,</span> <span class="n">input_args</span><span class="p">,</span> <span class="n">expected_args</span><span class="p">):</span>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">def</span> <span class="nf">create_func</span><span class="p">(</span><span class="n">test_name</span><span class="p">,</span> <span class="n">input_args</span><span class="p">,</span> <span class="n">expected_args</span><span class="p">):</span>
         <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">foo</span><span class="p">(</span><span class="o">*</span><span class="n">input_args</span><span class="p">)</span>   <span class="c1"># call the Function under test</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">check_common_invariants</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">expected_args</span><span class="p">)</span>
-            <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="s2">&quot;test_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">test_name</span><span class="p">)</span>
+            <span class="n">func</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="s2">&quot;test_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">test_name</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">func</span>
 </pre></div>
-
+</td></tr></table>
 
 <p>Here the <code>create_func</code>, returns a <code>func</code> object. This <code>func</code> will be
 attached to the Test class we will create in the next few steps. This
@@ -176,22 +222,35 @@ invariants that the result of the function has to satisfy.</p>
 <p>Now, let's look at how we can loop around all test inputs and attach
 the <code>func</code> object to the test classes. We will create a class, that
 will act as a meta class for our test class.</p>
-<div class="highlight"><pre><span></span>    <span class="k">class</span> <span class="nc">TestFunctionFooMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
-        <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">class</span> <span class="nc">TestFunctionFooMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
             <span class="k">def</span> <span class="nf">create_func</span><span class="p">(</span><span class="n">test_name</span><span class="p">,</span> <span class="n">input_args</span><span class="p">,</span> <span class="n">expected_args</span><span class="p">):</span>
                 <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
                     <span class="n">result</span> <span class="o">=</span> <span class="n">foo</span><span class="p">(</span><span class="o">*</span><span class="n">input_args</span><span class="p">)</span>   <span class="c1"># call the Function under test</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">check_common_invariants</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">expected_args</span><span class="p">)</span>
-                <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="s2">&quot;test_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">test_name</span><span class="p">)</span>
+                <span class="n">func</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="s2">&quot;test_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">test_name</span><span class="p">)</span>
                 <span class="k">return</span> <span class="n">func</span>
 
             <span class="c1"># get_test_args yields (test_name, input_args, expected_value)</span>
             <span class="k">for</span> <span class="n">test_name</span><span class="p">,</span> <span class="n">input_args</span><span class="p">,</span> <span class="n">expected_args</span> <span class="ow">in</span> <span class="n">get_test_args</span><span class="p">():</span>
                 <span class="n">func</span> <span class="o">=</span> <span class="n">create_func</span><span class="p">(</span><span class="n">test_name</span><span class="p">,</span> <span class="n">input_args</span><span class="p">,</span> <span class="n">expected_args</span><span class="p">)</span>
-                <span class="n">attrs</span><span class="p">[</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span>
-            <span class="k">return</span> <span class="nb">type</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="n">func</span><span class="o">.</span><span class="n">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span>
+            <span class="k">return</span> <span class="nb">type</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
 </pre></div>
-
+</td></tr></table>
 
 <p>We see that we plugged in the <code>create_func</code> into the <strong>new</strong>
 function of the class we will use to create our Test class. Between,
@@ -199,7 +258,23 @@ line 11 and 13, we loop over all possible inputs, and expected output,
 get a new <code>func</code> for each instance and then attach the newly
 minted <code>func</code> to the Test class that is getting created.</p>
 <p>And, here is the definition of <code>get_test_args</code>.</p>
-<div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">get_test_args</span><span class="p">():</span>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17</pre></div></td><td class="code"><div class="codehilite"><pre><span></span>    <span class="k">def</span> <span class="nf">get_test_args</span><span class="p">():</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">y</span> <span class="o">=</span> <span class="n">z</span> <span class="o">=</span> <span class="p">[</span><span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">]</span>
         <span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">product</span><span class="p">,</span> <span class="n">repeat</span>
         <span class="n">input_args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">product</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">))</span>
@@ -217,7 +292,7 @@ minted <code>func</code> to the Test class that is getting created.</p>
         <span class="k">for</span> <span class="n">test_name</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">test_names</span><span class="p">,</span> <span class="n">input_args</span><span class="p">,</span> <span class="n">expected_args</span><span class="p">):</span>
             <span class="k">yield</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">test_name</span><span class="p">),</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
 </pre></div>
-
+</td></tr></table>
 
 <p>All this function does is to generate the input/output mapping. In a
 real-world example, this method would essentially be assembling the input
