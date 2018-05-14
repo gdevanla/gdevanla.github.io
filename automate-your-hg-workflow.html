@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="author" content="Guru Devanla">
+        <title>Automating Hg Work flow</title>
+
+        <!--web fonts-->
+        <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
+        <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
+
+        <link rel="stylesheet" href="/theme/css/main.css" />
+        <!-- <link rel="stylesheet" href="/theme/css/pygment.css"/> -->
+        <link rel="stylesheet" href="/theme/css/default.css"/>
+
+
+           <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+</head>
+
+<body>
+    <header>
+        <span><a class="title" href="/index.html"><h1>blog <| code </h1></a></span>
+        <nav>
+            <ul>
+                    <li><a href="/index.html">posts</a></li>
+                    <li><a href="/archives.html">archives</a></li>
+                    <li><a href="/pages/who-am-i.html">about</a></li>
+                    <li><a href="/pages/books.html">book</a></li>
+            </ul>
+        </nav>
+    </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h2>
+        <a class="title" href="/automate-your-hg-workflow.html" rel="bookmark"
+           title="Permalink to Automating Hg Work flow">Automating Hg Work flow</a></h2>
+      <div class="extra-info">
+                <abbr class="published" title="2018-05-10T00:00:00-07:00">
+                    05-10-2018
+                </abbr>
+                In <a href="/category/mercurial-hg.html">Mercurial, Hg</a>.       </div><!-- /.entry-content -->
+
+    </header>
+    <h1>Introduction</h1>
+<p>Mercurial(Hg) has very powerful command-line interface. This command line interface can be used to automate your development work flow that involves interacting with the Hg repository. In this post, I will introduce you to this interface and demonstrate certain uses of this interface by showing how I automate one of my own interactions with Hg. Our objectives for this automation is to DRY as much as possible, and</p>
+<ul>
+<li>Not repeat mechanical stuff that could easily be automated</li>
+<li>Reduce errors involved in visually looking up changeset information and typing out changset ids, while merging to/from branches(usually <code>default</code>)</li>
+<li>Systematically generate consistent messages, that can be prefixed/suffixed to our commit messages. The instances where we want messages wrapped in a template would include:<ul>
+<li>Committing to a particular branch with some meta information about the feature, ticket id, and other tags that can be picked up by other team collaboration applications like code review tools etc.</li>
+<li>While merging to <code>default</code>, carry over the branch names, ticket id and any meta information available from the branch automatically</li>
+<li>While merging from <code>default</code> (As in once in a while you want to catch up with <code>default</code>.)</li>
+</ul>
+</li>
+</ul>
+<h1>Mercurial Commands</h1>
+<h2>Revsets</h2>
+<p>Almost all Hg command-line interfaces require one or set of changsets provided as an argument. When revset argument is not provided, implicit default changesets are used. This changeset arguments are provided in the form which <code>Hg</code> calls a <code>revset</code>.</p>
+<p>Here are some examples of using <code>revsets</code> with <code>hg log</code> command:</p>
+<ol>
+<li>Using the default revset option, that displays the last commit on the <code>local repo</code> across any <code>user</code>.</li>
+</ol>
+<div class="highlight"><pre><span></span>    $ hg log --limit <span class="m">1</span>
+
+    changeset:   <span class="m">29227</span>:448ace9d726b
+    tag:         tip
+    user:        Guru Devanla &lt;g@mail.com&gt;
+    date:        Sun May <span class="m">13</span> <span class="m">10</span>:13:33 <span class="m">2018</span> -0700
+    files:       core-lib/cloop.py
+    description:
+    experimental ast implementation<span class="s2">&quot;</span>
+</pre></div>
+
+
+<ol>
+<li>To view that last 2 changesets that were committed by user <code>devanla</code></li>
+</ol>
+<div class="highlight"><pre><span></span>    $ hg log -r <span class="s1">&#39;last(user(devanla), 2)&#39;</span>
+    changeset:   <span class="m">29227</span>:448ace9d726b
+    tag:         tip
+    user:        Guru Devanla &lt;g@mail.com&gt;
+    date:        Sun May <span class="m">13</span> <span class="m">10</span>:13:33 <span class="m">2018</span> -0700
+    files:       external/cloop.py
+    description:
+    experimental cloop in python with some <span class="nb">help</span> from ipython
+
+
+    changeset:   <span class="m">29223</span>:3cc421ca1c23
+    user:        Guru Devanla &lt;g@mail.com&gt;
+    date:        Fri May <span class="m">11</span> <span class="m">12</span>:39:12 <span class="m">2018</span> -0700
+    files:       package/public/table_compositor/README.rst
+    description:
+    update table compositor README
+</pre></div>
+
+
+<p>b) To view the latest changsets that were committed  by user 'devanla' but only on any <code>non-default</code> branch. Notice that the changes are from 2 different branches and not from <code>default</code></p>
+<div class="highlight"><pre><span></span>    $ hg log -r <span class="s1">&#39;last(user(devanla) and not(branch(default)) and heads(all()) and not closed(), 2)&#39;</span>
+    changeset:   <span class="m">27763</span>:7c0af63767a4
+    branch:      devanla/table-compositor/1010/improve-documentation
+    user:        Guru Devanla &lt;g@mail.com&gt;
+    date:        Thu Mar <span class="m">29</span> <span class="m">11</span>:35:38 <span class="m">2018</span> -0700
+    files:       package/public/table_compositor/README.rst
+    description: improve documentation of table-compositor
+
+
+
+    changeset:   <span class="m">24297</span>:db5591f91f97
+    branch:      devanla/external/1911/update-commit-hooks
+    user:        Guru Devanla &lt;g@mail.com&gt;
+    date:        Fri Jan <span class="m">05</span> <span class="m">15</span>:43:19 <span class="m">2018</span> -0800
+    files:       external/commit-hook.py
+    description: update commit hooks to handle mis-named branches
+</pre></div>
+
+
+<p>You see that the <code>-r</code> argument to the command used above can get very complex. But, it is easy to understand what is going on here. The <code>-r</code> argument is what we call the <code>revset</code>. Reading the documentation for <a href="https://www.mercurial-scm.org/repo/hg/help/revsets">revsets</a> will be helpful. While reading the documentation, keeping the following concepts in mind, would help understand the documentation better.</p>
+<ol>
+<li>Each of the functions used in the argument to <code>-r</code> returns a set of changesets. eg. <code>heads()</code> returns all heads, <code>last()</code> by default returns the set with one <code>changeset</code> which is the last committed changeset. These functions are also referred to as <code>Predicates</code>.</li>
+<li>These functions can be composed with other functions to filter/narrow down the changsets. eg. <code>last(heads(), 2)</code> returns set of last 2 changeset ids across all heads.</li>
+<li>You can combined the result from each of this composed functions using set operators, since each of the composed functions return a set of changsets. eg. <code>last(heads(), 2) and not branch(default)</code> would filter out <code>head</code> on <code>default</code>. These operators are referred to as <code>Patterns</code> in the documentation.</li>
+</ol>
+<p>With this breakup and the mercurial documentation you should be able to understand how to use <code>revsets</code>. Take a few minutes and read through the documentation now.</p>
+<h2>Templates</h2>
+<p>One other concept you need to learn before we talk about automation is how we can customize the printing of log messages. Note that Mercurial documentation recommends always using the <code>hg</code> commands to interact with the local and remote repositories and not to rely on the internal Python level API that can be used. In addition, to automate our interactions we usually need access to one particular <code>changset id</code>. To achieve this we will have to use the <code>--template</code> argument (or <code>-T</code>).</p>
+<ol>
+<li>For example, to view the a list of changsets as one liners, with short form of node-ids</li>
+</ol>
+<div class="highlight"><pre><span></span>    $ hg log -r <span class="s2">&quot;last(user(devanla), 2)&quot;</span> --limit <span class="m">2</span> -T <span class="s2">&quot;{rev}: {node|short}: {desc}\n&quot;</span>
+
+    <span class="m">29227</span>: 448ace9d726b: experimental cloop
+    <span class="m">29226</span>: 1bdfad2d0c86: <span class="k">function</span> refactor
+</pre></div>
+
+
+<p>Again, a lot more information about <code>templates</code> can be got using <code>hg help templates</code> or <a href="https://www.mercurial-scm.org/repo/hg/help/templates">here</a>.</p>
+<p>Here is the outline you will need to quickly understand how to use the <code>templating</code> system:</p>
+<ol>
+<li>Every changset in mercurial has a set of attributes, like <code>changeset id</code>, <code>branch</code>, <code>user</code>, <code>phase</code> etc. Each of these attributes can be accessed and printed by a set of pre-defined keywords. eg: <code>node</code> for changeset ids, <code>user</code> for user, <code>phase</code> for phases etc.</li>
+<li>The value provided by these keywords are <code>strings</code> and they can be transformed by applying <code>filters</code> on them. I would call them <code>transformations</code> as the term <code>filter</code> is a bit misleading.</li>
+<li>Filters may not be sufficient in all scenarios, For example, dealing with list of values (files updated in a changeset) where the names have to be a concatenated string, applying conditional filtering/formatting based on the values, apply transformations to list of values. In such scenarios we have 'functions' like <code>if</code>, <code>files</code> etc.</li>
+<li>A list operator <code>%</code> is also available, to process return values of expressions that return lists.</li>
+</ol>
+<h1>Automating Our Tasks: Example</h1>
+<p>Powered with our knowledge of using <code>revsets</code> and <code>templates</code> we are able to either customize our output to view logs or just let the template return the <code>changset id</code> which in turn get be piped to other functions in our automation scripts.</p>
+<p>Putting together, some of the things we learned about revsets and template, we can write powerful queries to interact with the Hg repository.</p>
+<p>a. To get the last update of a user (refer to example above)</p>
+<p>b. To get the last update of a user across different branches (refer to example above)</p>
+<p>c. Get the last update of user with a <code>keyword</code> in commit message or file name. (refer to <code>keyword</code> in <code>template</code> documentation for more info)</p>
+<div class="highlight"><pre><span></span>    hg log -r <span class="s2">&quot;last(user(devanla) and keyword(&#39;norm&#39;))&quot;</span>
+</pre></div>
+
+
+<p>d) Combine the former queries with template to just return node id, using <code>-T {node}</code>
+e) Use the node_id to perform some operations like <code>hg up</code> to last commit on a non-default node that is not merged yet</p>
+<div class="highlight"><pre><span></span>    hg log -r <span class="s1">&#39;last(user(devanla) and heads(all()) and not parents(merge()) and not closed() and not branch(default))&#39;</span>  -T <span class="s2">&quot;{node|short}&quot;</span> <span class="p">|</span> xargs hg up
+</pre></div>
+
+
+<h2>Automatically wrapping <code>commit</code> messages in a template to achieve consistency</h2>
+<p>Now, lets make use of this knowledge to automate our work flow. This automation will especially help consistently apply some message templates to our commit messages.</p>
+<p>This will be our objective:</p>
+<h3>Objective #1</h3>
+<p>I usually work on a feature branch. For consistency, I always name a branch with a particular format, say,
+   <code>{user}/{package}/{ticket-id}/{feature-desc-in-short}</code>.
+   This format forms a <code>branch</code> name. For example, a name of the branch in this format would be
+   <code>devanla/core-lib/19191/refactor-normalization-in-phase-2</code>
+    Each time we commit a changeset to this branch, we want our commit message to include information about the ticket id, which will look this way <code>core-lib: update norm function to take an optimization param, #19191.</code> Note, <code>core-lib</code> and <code>19191</code> are string that were extracted from the branch name and used to 'decorate' the original commit message.</p>
+<p>This method of referencing ticket ids in commit messages, usually tends to help other team collaboration tools to link changsets to code review requests. Note, that this template is just an example. The point is we want to be able to tag each commit with some information that is available in the branch. This provides information at the commit level and could also provide the needed meta-information for team collaboration tools.</p>
+<h3>Objective #2:</h3>
+<p>Once in a while we want to catch up with default. The typical steps would be</p>
+<div class="highlight"><pre><span></span>    hg up branch-you-are-working-on
+    hg pull
+    hg merge default
+    hg commit -m<span class="s2">&quot;catching-up-with-default&quot;</span>
+</pre></div>
+
+
+<p>We want to automate this step.</p>
+<h3>Objective #3:</h3>
+<p>The inverse of step 2, is that once we are done working on changes on a feature branch, we want to merge those changes to default. While merging those changes, we want to commit messages of the merge to follow a template. We want this template to capture the meta-information that is available in the branch name. For example, if we want to merge branch: <code>devanla/core-lib/19191/refactor-normalization-in-phase-2</code>. Then, we want the commit message of the merge to be `core-lib: merged, refactor-normalization-in-phase-2, refs #19191'.</p>
+<p>Note, that we built this commit message entirely from the branch name. We will automate this step as well.</p>
+<h2>Let's Automate</h2>
+<h3>Automate objective #1</h3>
+<p>Automating objective #1 is a little tricky. We will have to perform a number of steps that we have not discussed about so far. I picked up this method from <a href="https://stackoverflow.com/questions/10377011/mercurial-hook-change-a-commit-message-pre-commit">this</a> post on SO.</p>
+<div class="highlight"><pre><span></span>    <span class="kn">import</span> <span class="nn">re</span>
+    <span class="kn">import</span> <span class="nn">curses</span>
+
+    <span class="c1"># Example: devanla/core-lib/919191/refactor-norm-function</span>
+    <span class="n">pat</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;[a-z]*/([a-zA-Z]*)/([0-9]*)/*&#39;</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">precommit_hook</span><span class="p">(</span><span class="n">repo</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># keep a copy of repo.commitctx</span>
+        <span class="n">commitctx</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">commitctx</span>
+        <span class="n">branch</span> <span class="o">=</span> <span class="n">repo</span><span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">.</span><span class="n">branch</span><span class="p">()</span>
+        <span class="n">ui</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;ui&#39;</span><span class="p">]</span>
+        <span class="n">curses</span><span class="o">.</span><span class="n">setupterm</span><span class="p">()</span>
+        <span class="n">suffix_message</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="n">prefix_message</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">branch</span> <span class="o">!=</span> <span class="s1">&#39;default&#39;</span><span class="p">:</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">pat</span><span class="p">,</span> <span class="n">branch</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">groups</span><span class="p">())</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">tlt</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">redmine_ticket</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tlt</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+                <span class="n">redmine_ticket</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">ui</span><span class="o">.</span><span class="n">prompt</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Update message with </span><span class="se">\&quot;</span><span class="si">%s</span><span class="s1">: [YOUR MESSAGE], refs #</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s1"> to message? (y/N)?&#39;</span> <span class="o">%</span>
+                    <span class="p">(</span><span class="n">tlt</span><span class="p">,</span> <span class="n">redmine_ticket</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">response</span> <span class="o">!=</span> <span class="s1">&#39;N&#39;</span><span class="p">:</span>
+                <span class="n">suffix_message</span> <span class="o">=</span> <span class="s1">&#39;, refs #{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">redmine_ticket</span><span class="p">)</span>
+                <span class="n">prefix_message</span> <span class="o">=</span> <span class="n">tlt</span> <span class="o">+</span> <span class="s1">&#39;:&#39;</span>
+        <span class="k">def</span> <span class="nf">updatectx</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">error</span><span class="p">):</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">_text</span> <span class="o">=</span> <span class="s1">&#39;{}{}{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">prefix_message</span><span class="p">,</span>
+                <span class="n">ctx</span><span class="o">.</span><span class="n">_text</span><span class="p">,</span>
+                <span class="n">suffix_message</span><span class="p">)</span>
+        <span class="c1">#ctx._text += extra_message</span>
+        <span class="k">return</span> <span class="n">commitctx</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="c1"># monkeypatch the commit method</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">commitctx</span> <span class="o">=</span> <span class="n">updatectx</span>
+</pre></div>
+
+
+<p>Here is what the script does. We start with a branch-name that looks as follows:  <code>devanla/core-lib/191921/feature-to-improve-normalization.</code>.</p>
+<p>Now say, we make some changes and commit the changeset, with the following message: <code>hg commit -m"refactoring core norm functions args</code>.</p>
+<p>At that point this hook gets called, and transforms the message with information available in the branch name. The script shown above also asks for confirmation before transforming the message. After the hook is applied the final message will look like <code>core-lib: refactoring core norm functions args, refs #191921</code>.</p>
+<p>Note that we attached the <code>package-name</code> and <code>ticket-id</code> to the commit message. This will have to change depending on each person's work flow.</p>
+<h1>Automating objective #2</h1>
+<p>To achieve objective #2 we use shell scripting. Since, I use <code>zsh</code>, I have outlined the sample script using the <code>zsh</code> syntax. To automate this objective we add an alias function to our <code>zsh</code> that does the following</p>
+<ol>
+<li>Get the id of the current branch</li>
+<li>Makes sure we are not on <code>default</code> already. (since we want to merge changes from default)</li>
+<li>Ask for confirmation</li>
+<li>Merge changes from <code>default</code> with a default commit message. Note, that since we have our pre-commit hook enabled, the final message we get would look as follows
+<code>corelib: catch-up-with-default, reds 191921</code>. Is is nice that our pre-commit hook is still effective for this script as well.</li>
+</ol>
+<div class="highlight"><pre><span></span><span class="c1"># alias added to .zshrc or equivalent file that will bring this alias to zsh scope</span>
+
+cuwd <span class="o">()</span> <span class="o">{</span>
+    <span class="nb">local</span> <span class="nv">current_branch</span><span class="o">=</span><span class="sb">`</span>hg identify -b<span class="sb">`</span>
+    <span class="nb">echo</span> <span class="nv">$current_branch</span>
+    <span class="k">if</span> <span class="o">[[</span> <span class="nv">$current_branch</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
+        <span class="nb">echo</span> <span class="s2">&quot;Yikes! Sorry. \n You should NOT be on the default to perform this operation&quot;</span>
+        <span class="k">return</span>
+    <span class="k">fi</span>
+
+    <span class="nb">echo</span> <span class="s2">&quot;Merging default to current branch&quot;</span>
+    <span class="nb">local</span> <span class="nv">temp</span><span class="o">=</span><span class="s1">&#39;Press any key to Continue, Ctrl-C to quit&#39;</span>
+    vared temp
+    hg merge default
+    hg commit -m<span class="s2">&quot;catch-up-with-default&quot;</span>
+ <span class="o">}</span>
+</pre></div>
+
+
+<p>Using this kind of consistent message template also automate future reporting, filtering changesets that are routine merges.</p>
+<h1>Automating objective #3</h1>
+<p>Now, once you are done working on a feature and you are ready to merge to <code>default</code>. Each time we merge to default, we want to provide information on what this merge is about. Again, since we have all this information in the branch name, we can have a script that will help us build a message and commit the merges to <code>default</code>.</p>
+<p>For example, if we have a branch named <code>devanla/core-lib/10101/feature-2001</code>, then while we merge to <code>default</code> we can generate a message that looks like this: <code>core-lib: merged, feature-to-improve-normalization, refs #10101.</code>. Note that we nicely have some desc, the project-name and the ticket id in the message of the merge commit.</p>
+<p>This again can be achieved with a shell script, powered by our knowledge of <code>revsets</code> and <code>templating</code>.</p>
+<div class="highlight"><pre><span></span>merge_latest_branch_to_default <span class="o">()</span> <span class="o">{</span>
+      <span class="c1"># this script only allows merging to default</span>
+      <span class="c1"># check and quit if you are not on default</span>
+      <span class="nb">local</span> <span class="nv">current_branch</span><span class="o">=</span><span class="sb">`</span>hg identify -b<span class="sb">`</span>
+      <span class="nb">echo</span> <span class="nv">$current_branch</span>
+      <span class="k">if</span> <span class="o">[[</span> <span class="nv">$current_branch</span> !<span class="o">=</span> <span class="s2">&quot;default&quot;</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
+         <span class="nb">echo</span> <span class="s2">&quot;Yikes! Sorry. \n You should be on the current branch to perform this operation&quot;</span>
+         <span class="k">return</span>
+      <span class="k">fi</span>
+      hg lc_last_update
+      <span class="nb">local</span> <span class="nv">changeset_display</span><span class="o">=</span><span class="s2">&quot;`hg lc_last_update --template &quot;</span><span class="o">{</span>rev<span class="o">}</span>: <span class="o">{</span>node<span class="p">|</span>short<span class="o">}</span>: <span class="o">{</span>branch<span class="o">}</span><span class="s2">&quot;`&quot;</span>
+      <span class="nb">local</span> <span class="nv">changeset</span><span class="o">=</span><span class="s2">&quot;`hg lc_all --limit 1 --template &quot;</span><span class="o">{</span>node<span class="p">|</span>short<span class="o">}</span><span class="s2">&quot;`&quot;</span>
+      <span class="nb">local</span> <span class="nv">branchname</span><span class="o">=</span><span class="sb">`</span>hg lc_all --limit <span class="m">1</span> --template <span class="s2">&quot;{branch}&quot;</span><span class="sb">`</span>
+      <span class="nb">local</span> <span class="nv">message</span><span class="o">=</span><span class="s2">&quot;`echo </span><span class="nv">$branchname</span><span class="s2"> | sed -e &#39;s/\(devanla\)\/\(.*\)-\([0-9]*\)-\(.*\)/\2:merged, \4, refs #\3/g&#39;`&quot;</span>
+      <span class="nb">echo</span> <span class="s2">&quot;Pushing changeset = </span><span class="nv">$changeset_display</span><span class="s2">&quot;</span>
+      <span class="nb">local</span> <span class="nv">temp</span><span class="o">=</span><span class="s1">&#39;Press any key to Continue, Ctrl-C to quit&#39;</span>
+      vared temp
+      hg merge -r <span class="nv">$changeset</span>
+      <span class="nb">echo</span> <span class="s2">&quot;\n\nMerge completed, do you want me to commit, using the following message\n&quot;</span>
+      <span class="nb">echo</span> <span class="s2">&quot;\n\n------------------------------------------------&quot;</span>
+      <span class="nb">echo</span> <span class="nv">$message</span>
+      <span class="nb">echo</span> <span class="s2">&quot;\n---------------------------------------------------&quot;</span>
+      <span class="nb">local</span> <span class="nv">temp</span><span class="o">=</span><span class="s1">&#39;Press any key to Continue, Ctrl-C to quit&#39;</span>
+      vared temp
+      hg commit -m<span class="s2">&quot;</span><span class="nv">$message</span><span class="s2">&quot;</span>
+      <span class="nb">echo</span> <span class="s2">&quot;Complete&quot;</span>
+<span class="o">}</span>
+</pre></div>
+
+
+<p>Again, this script is just an example of how a automatic merge can be crafted. You will have to add you own little script to accommodate your particular work flow.</p>
+<h1>Conclusion</h1>
+<p>We developers are lazy (and proudly so) and we seek to automate many of the tasks we perform. Automation also comes with the benefit of reducing errors and provides a consistent result. In this post we saw how we can leverage some of the powerful command-line feature of Hg to automate our interactions with Hg as we add more features and changsets to our code base.</p>
+<!--  LocalWords:  changset Revsets changsets changesets revset hg eg
+ -->
+
+<!--  LocalWords:  revsets repo ast devanla cloop ipython README mis
+ -->
+
+<!--  LocalWords:  API desc bdfad refactor templating pre xargs param
+ -->
+
+<!--  LocalWords:  StackOverflow precommit kwargs commitctx ui len fi
+ -->
+
+<!--  LocalWords:  setupterm tlt redmine nUpdate updatectx ctx args
+ -->
+
+<!--  LocalWords:  monkeypatch refactoring zsh corelib zshrc cuwd lc
+ -->
+
+<!--  LocalWords:  Ctrl vared branchname sed nMerge workflow af
+ -->
+
+
+  </article>
+</section>
+    <footer>
+        <hr>
+        <div class="social">
+            <ul>
+                <li><a href="http://github.com/gdevanla">GitHub</a></li>
+                <li><a href="http://twitter.com/grdvnl">Twitter</a></li>
+            </ul>
+            <ul>
+                <li>
+                    Powered by Pelican
+                </li>
+            </ul>
+        </div><!-- /.social -->
+
+
+<!--  -->
+
+</body>
+</html>
