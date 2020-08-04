@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>blog <| code - Curry Power</title>
+        <!--web fonts-->
+        <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
+        <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
+
+        -<link rel="stylesheet" href="../css/main.css" type="text/css" />
+        <!-- <link rel="stylesheet" href="/css/default.css" type="test/css"/> -->
+        <link rel="stylesheet" href="../css/syntax.css" type="text/css" />
+        <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+
+    </head>
+    <body>
+      <header>
+        <span><a class="title" href="../index.html"><h1>blog &lt| code </h1></a></span>
+        <nav>
+          <ul>
+            <li><a href="../index.html">posts</a></li>
+            <li><a href="../archive.html">archives</a></li>
+            <li><a href="pages/books.html">book</a></li>
+            <li><a href="../about.html">about</a></li>
+          </ul>
+        </nav>
+      </header>
+        <main role="main">
+            <section id="content" class="body">
+  <article>
+    <header>
+      <h1>Curry Power</h1>
+      <div class="extra-info">
+        <abbr class="published" title="{{ article.date.isoformat() }}">2016-09-07</abbr>
+      </div><!-- /.entry-content -->
+    </header>
+    <section>
+        <h2 id="what-is-currying">What is currying?</h2>
+<p>From [Wikipedia] <a href="https://en.wikipedia.org/wiki/Currying" title="wiki-curry">1</a></p>
+<blockquote>
+<blockquote>
+<p>In mathematics and computer science, currying is the technique of translating the evaluation of a function that takes multiple arguments (or a tuple of arguments) into evaluating a sequence of functions, each with a single argument. Currying is related to, but not the same as partial application.</p>
+</blockquote>
+</blockquote>
+<h2 id="why-curry">Why curry?</h2>
+<p>As the definition says, it gives us the ability to invoke functions with a partial set of arguments(in required order) and evaluate the function only after all arguments for the function are available. Therefore,</p>
+<ol type="1">
+<li>We could re-define functions by providing partial arguments</li>
+<li>Lazy evaluation - apply arguments to a function, but postpone the final evaluation until it is needed</li>
+</ol>
+<p>You are probably familiar with the <code>partial</code> function available in the functools library. <code>partial</code> function can be used to implement currying. But, this can require a lot of boiler plate code, This post walks through the code examples based on the implementation of <code>curry</code> and related classes in [PyMonad] <a href="https://bitbucket.org/jason_delaat/pymonad/raw/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py" title="@curry">2</a>. Examples are also adapted from the documentation. The purpose of this post is to walk through the implementation piecemeal and appreciate the power of currying. We will see how just by ‘currying’ and defining certain mapping of functions we can build powerful structures of computation in Python.</p>
+<h2 id="simple-advantages---lazy-construction-and-evaluation">Simple advantages - Lazy construction and evaluation</h2>
+<p>Say, we want to curry a function just by using a decorator called <code>curry</code>. One way would be like,</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>    <span class="at">@curry</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>    <span class="kw">def</span> add(x, y):</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>        <span class="cf">return</span> x <span class="op">+</span> y</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>    add(<span class="dv">10</span>)(<span class="dv">32</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>    <span class="op">&gt;</span> <span class="dv">42</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>    <span class="co"># apply arguments one and a time</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>    f <span class="op">=</span> add(<span class="dv">10</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a>    f <span class="op">=</span> add(<span class="dv">32</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a>    <span class="op">&gt;</span> <span class="dv">32</span></span></code></pre></div>
+<p>In the above example, notice that we could invoke <code>add</code> twice, once for each argument. Once all the arguments to the function have been provided, the function is invoked and the result is available.</p>
+<p>How would we implement the <code>curry</code> decorator. Conceptually, here are the things we will have to take care of</p>
+<ol type="1">
+<li>Recursively apply the arguments to the function as they become available</li>
+<li>Invoke the function once all argument to the function has been provided</li>
+</ol>
+<p>Let’s work on each of these steps. For recursively applying arguments, we need to apply arguments that become available, but also return a callable that can be invoked during the next call. Therefore, we can implement a function we will call a [buildReader] <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default#Reader.py-102">3</a></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>    <span class="kw">def</span> buildReader(argValues, numArgs):</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>        <span class="cf">if</span> numArgs <span class="op">==</span> <span class="dv">0</span>:</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>            <span class="cf">return</span> f(<span class="op">*</span>argValues)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a>        <span class="cf">else</span>:</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>            l <span class="op">=</span>  <span class="kw">lambda</span> x: buildReader(argValues <span class="op">+</span> [x], numArgs <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>            <span class="cf">return</span> l</span></code></pre></div>
+<p>Here the <code>buildReader</code> recursively invokes itself, applying one argument at a time, but returns a callable that will accept the next argument. Once, all the arguments to the wrapped function is exhausted, the wrapped function in invoked and the final value is returned.</p>
+<p>For example, if we were to invoke,</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="at">@curry</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a><span class="kw">def</span> add3(x, y, z):</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>    <span class="cf">return</span> x <span class="op">+</span> y <span class="op">+</span> z</span></code></pre></div>
+<p>then we have a invocation structure for <code>add(10)(20)(30)</code> looks like</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>(<span class="kw">lambda</span> x : builderReader([<span class="dv">10</span>] <span class="op">+</span> [x], <span class="dv">2</span>)   <span class="co"># add(10)</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>(<span class="kw">lambda</span> x: builderReader([<span class="dv">20</span>, <span class="dv">10</span>] <span class="op">+</span> [x], <span class="dv">1</span>) <span class="co"># add(20)</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a> <span class="dv">60</span> <span class="co"># add(30)</span></span></code></pre></div>
+<p>Now, we still need to handle the base invocation scenario(call made when the decorator is evaluated) and also ability to <code>call</code> the add method repeatedly. Therefore, it would be reasonable to wrap the <code>buildReader</code> in a callable so that this object can be invoked repeatedly. Here, is the updated <code>buildReader</code> along with the callable class.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="kw">def</span> curry(f):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>    <span class="co">'''</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a><span class="co">    Custom curry function. Does not handle kw-only args</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a><span class="co">    '''</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>    numArgs <span class="op">=</span> f.__code__.co_argcount</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a>    <span class="kw">def</span> buildReader(argValues, numArgs):</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a>        <span class="cf">if</span> numArgs <span class="op">==</span> <span class="dv">0</span>:</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a>            <span class="cf">return</span> f(<span class="op">*</span>argValues)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a>        <span class="cf">else</span>:</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a>            l <span class="op">=</span>  <span class="kw">lambda</span> x: buildReader(argValues <span class="op">+</span> [x], numArgs <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>            <span class="cf">return</span> l</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>    <span class="cf">return</span> CallableClass(buildReader([], numArgs))</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a><span class="kw">class</span> CallableClass:</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a>    <span class="co">'''</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true"></a><span class="co">    Wrap the function to call inside a callable</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true"></a><span class="co">    '''</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, func):</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true"></a>        <span class="co">'''</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true"></a><span class="co">        '''</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true"></a>        <span class="va">self</span>.func <span class="op">=</span> func</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true"></a></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true"></a>    <span class="kw">def</span> <span class="fu">__call__</span>(<span class="va">self</span>, <span class="op">*</span>args):</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true"></a>        f <span class="op">=</span> <span class="va">self</span>.func</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true"></a>        <span class="cf">for</span> a <span class="kw">in</span> args:</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true"></a>            <span class="co"># here we are just invoking the buildReader iteratively</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true"></a>            <span class="co"># no error handling to check excess no of arguments</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true"></a>            f <span class="op">=</span> f(a)</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true"></a></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true"></a>        <span class="cf">if</span> <span class="bu">callable</span>(f):</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true"></a>            <span class="co"># we have not exhausted the argument yet,</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true"></a>            <span class="co"># therefore, continue wrapping the buildReader inside</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true"></a>            <span class="co"># the callable class</span></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true"></a>            <span class="cf">return</span> CallableClass(f)</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true"></a>        <span class="cf">return</span> f  <span class="co"># we have the final value after evaluation</span></span></code></pre></div>
+<p>Notice, in the above snippet, the <code>__call__</code> function repeatedly applies the iterable of arguments to the wrapped function, giving us this progression</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a>(<span class="kw">lambda</span> x : builderReader([<span class="dv">10</span>] <span class="op">+</span> [x], <span class="dv">2</span>)   <span class="co"># add(10)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a>(<span class="kw">lambda</span> x: builderReader([<span class="dv">20</span>, <span class="dv">10</span>] <span class="op">+</span> [x], <span class="dv">1</span>) <span class="co"># add(20)</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a> <span class="dv">60</span> <span class="co"># add(30)</span></span></code></pre></div>
+<p>We see that we have achieved our initial objective of being able to use the curry decorator in place of the <code>partial</code> function. We use <em>curried</em> functions as expressions and we can <em>pass</em> them around till they are evaluated.</p>
+<h2 id="simple-composition">Simple Composition</h2>
+<p>In the first step, we were able to create an expression out of one function. We can extend this a little further and create expressions of <code>composed curried</code> functions. For example, say we had</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a><span class="at">@curry</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a><span class="kw">def</span> add(x, y):</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a>    <span class="cf">return</span> x <span class="op">+</span> y</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a><span class="at">@curry</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a><span class="kw">def</span> mult(x, y):</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true"></a>    <span class="cf">return</span> x <span class="op">*</span> y</span></code></pre></div>
+<p>Then, we would like to declare statements such as</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a>    x <span class="op">=</span> ((add(<span class="dv">5</span>) <span class="op">*</span> mult(<span class="dv">3</span>))(<span class="dv">2</span>))   <span class="co"># '*' is composition operator</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a>    x <span class="op">==</span> (mult(<span class="dv">3</span>, add(<span class="dv">5</span>, <span class="dv">2</span>)))  <span class="co"># here we compose add and mult</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a>    x <span class="op">==</span> <span class="dv">21</span></span></code></pre></div>
+<p>To do this, we just extend out <code>CallableClass</code> to perform <code>*</code> (composition)</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a>    <span class="kw">def</span> <span class="fu">__mul__</span>(<span class="va">self</span>, func):</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a>        <span class="co">'''</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a><span class="co">        func: is the outer function in the function composition</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a><span class="co">        in a * b, func will be a</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a><span class="co">        Here we need to invoke a first and then invoke b.</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a><span class="co">        By this point the function operands have all but one argument</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a><span class="co">        applied to them</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a><span class="co">        '''</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a>        <span class="cf">return</span> CallableClass(<span class="kw">lambda</span> x: func(<span class="va">self</span>.func(x)))</span></code></pre></div>
+<p>Awesome! Now, we can create expressions that are composed functions (that are not yet evaluated). The composed functions can also be declared across multiple statements and then assembled together.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>    x <span class="op">=</span> ((add(<span class="dv">5</span>) <span class="op">*</span> mult(<span class="dv">3</span>))(<span class="dv">2</span>))</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>    y <span class="op">=</span> add(<span class="dv">10</span>)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a>    y <span class="op">=</span> y(x)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>    <span class="bu">print</span>(y)   <span class="co"># 31</span></span></code></pre></div>
+<h2 id="pipe-lining-operations-with-one-common-input">Pipe-lining operations with one common input</h2>
+<p>Say, we want to <em>compose</em> a series of functions. In addition, we want all the functions in the series to have access to the <em>initial</em> input. For example, say we want</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a>    initial_input <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a>    mult(add(<span class="dv">10</span>, initial_input), initial_input)</span></code></pre></div>
+<p>Here we are sequencing our operations with a predecessor output in addition to the initial value. Lets extend the <code>CallableClass</code> to handle this operation. We will use the <code>rshift</code> operator to support this operation.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a>    <span class="kw">def</span> <span class="fu">__rshift__</span>(<span class="va">self</span>, func):</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a>        <span class="co">''' Compose functions, but also call the inner function</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a><span class="co">        '''</span> <span class="cf">with</span> x</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>        <span class="cf">return</span> CallableClass(<span class="kw">lambda</span> x: func(<span class="va">self</span>.func(x))(x))</span></code></pre></div>
+<p>Now, we can do the following</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>    x <span class="op">=</span> (add(<span class="dv">10</span>) <span class="op">&gt;&gt;</span> mult())</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>    <span class="bu">print</span>(x(<span class="dv">10</span>))  <span class="co"># print 200</span></span></code></pre></div>
+<p>We just created an expression that can compose a sequence of methods, in addition to maintaining access to the initial input invoking the expression. Lets, take a look at an nested example</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a>    y <span class="op">=</span> (<span class="kw">lambda</span> x: mult(x) <span class="op">&gt;&gt;</span> add())</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a>    x <span class="op">=</span> (add(<span class="dv">10</span>) <span class="op">&gt;&gt;</span> y <span class="op">&gt;&gt;</span> mult())</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a>    <span class="bu">print</span>(x(<span class="dv">10</span>)) <span class="co"># 2100</span></span></code></pre></div>
+<p>How the above example works in left as an exercise. But, the important thing to note is that we were able to embed sequence of expressions.</p>
+<h2 id="wrap-up-we-just-built-a-reader-monad">Wrap Up: We just built a Reader Monad</h2>
+<p>The concept of sequencing a set of methods into a composable functions is abstracted away using concepts called <em>Monad</em>. More precisely, what we just saw was an loose example of a Reader Monad.<sup id="a1"><a href="#f1">1</a></sup>. The [Reader] <a href="https://bitbucket.org/jason_delaat/pymonad/src/cbecd6796cd1488237d2a0f057cefd2a50df753a/pymonad/Reader.py?at=master&amp;fileviewer=file-view-default">5</a> here provides the full implementation of the Reader Monad. The curious reader, may also want to explore the <code>amap</code> method in this class. This method in turns implements what is called an Applicative.</p>
+<p>If you got this far, I suggest you check out [PyMonad] <a href="https://bitbucket.org/jason_delaat/pymonad/">6</a></p>
+<p><b id="f1">1</b> I call it loose, since our CallableClass needs to implement a few more methods before it can be called a Monad. But conceptually, we have a Reader Monad at hand. <a href="#a1">↩︎</a></p>
+    </section>
+  </article>
+</section>
+
+        </main>
+    <footer>
+        <hr>
+        <div class="social">
+          <ul>
+            <li><a href="https://github.com/gdevanla/">GitHub</a></li>
+            <li><a href="https://twitter.com/grdvnl">Twitter</a></li>
+            <li><a href="https://www.linkedin.com/in/grdvnl/">LinkedIn</a></li>
+          </ul>
+          <ul>
+              <li>
+                Site proudly generated by
+                <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+                </li>
+            </ul>
+        </div><!-- /.social -->
+    </footer>
+    </body>
+</html>

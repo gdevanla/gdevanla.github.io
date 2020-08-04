@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>blog <| code - Metaclasses at work - Generating well formed tests in Python</title>
+        <!--web fonts-->
+        <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
+        <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
+
+        -<link rel="stylesheet" href="../css/main.css" type="text/css" />
+        <!-- <link rel="stylesheet" href="/css/default.css" type="test/css"/> -->
+        <link rel="stylesheet" href="../css/syntax.css" type="text/css" />
+        <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+
+    </head>
+    <body>
+      <header>
+        <span><a class="title" href="../index.html"><h1>blog &lt| code </h1></a></span>
+        <nav>
+          <ul>
+            <li><a href="../index.html">posts</a></li>
+            <li><a href="../archive.html">archives</a></li>
+            <li><a href="pages/books.html">book</a></li>
+            <li><a href="../about.html">about</a></li>
+          </ul>
+        </nav>
+      </header>
+        <main role="main">
+            <section id="content" class="body">
+  <article>
+    <header>
+      <h1>Metaclasses at work - Generating well formed tests in Python</h1>
+      <div class="extra-info">
+        <abbr class="published" title="{{ article.date.isoformat() }}">2016-09-08</abbr>
+      </div><!-- /.entry-content -->
+    </header>
+    <section>
+        <p>I was fortunate to be given an opportunity to give a lightening talk at Pycon 2016. I spoke about how we can generate well-formed tests using the meta-classes facility of Python.</p>
+<p>Problem Statement:</p>
+<p>In many instances, we end up with tests that check for a common set of invariants for a large set of inputs. For example, say we need to test a function such as</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>    <span class="kw">def</span> foo(x, y, z):</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>    <span class="co">'''</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="co">    Args:  x, y z are Bool's</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a><span class="co">    '''</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>        <span class="cf">return</span> (x <span class="op">!=</span> y <span class="kw">and</span> x <span class="op">!=</span> z <span class="kw">or</span> x <span class="kw">and</span> z)</span></code></pre></div>
+<p>To generate a comprehensive set of tests for this function, we will need 8 tests, which all look the same except for the input that will vary.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>    <span class="kw">class</span> TestUnit(unittest.TestCase, metaclass<span class="op">=</span>TestFunctionFooMeta):</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>        <span class="kw">def</span> check_common_invariants(<span class="va">self</span>, actual_value, expected_value):</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>            <span class="va">self</span>.assertEqual(actual_value, expected_value)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>        <span class="kw">def</span> test_scenario_1(<span class="va">self</span>):</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>            x, y, z <span class="op">=</span> <span class="va">True</span>, <span class="va">True</span>, <span class="va">True</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a>            result <span class="op">=</span> foo(x, y, z)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true"></a>            <span class="va">self</span>.assertEqual(result, <span class="va">True</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true"></a>        <span class="kw">def</span> test_scenario_2(<span class="va">self</span>):</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true"></a>            x, y, z <span class="op">=</span> <span class="va">True</span>, <span class="va">True</span>, <span class="va">False</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true"></a>            result <span class="op">=</span> foo(x, y, z)</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true"></a>            <span class="va">self</span>.assertEqual(result, <span class="va">False</span>)</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true"></a>        <span class="kw">def</span> test_scenario_1(<span class="va">self</span>):</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true"></a>            .</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true"></a>            .</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true"></a>            .</span></code></pre></div>
+<p>Our objective here is to avoid such bolierplate code. In the real-world the 8 scenerios expresssed here could translate into 100’s of inputs from production data that can be used to regression test new changes to code.</p>
+<p>The alternate approach of looping around all the input and have the assert statements in the loop is not desirable, since we loose the descriptive error reporting mechanism of provided by the test runtime. For example, if a test fails, you really would not know which input the tests failed for. It would be an anti-pattern to take such an approach. Here is an example of the anti-pattern.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>    <span class="kw">def</span> test_all_scenarios(<span class="va">self</span>):</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>        <span class="co">'''</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a><span class="co">        This test is an anti-pattern. Looping around all inputs</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a><span class="co">        does not provide a good error reporting mechanism when test fails</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a><span class="co">        '''</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>        values <span class="op">=</span> [<span class="va">True</span>, <span class="va">False</span>]</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>        expected_results <span class="op">=</span> [</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>                <span class="va">True</span>,</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>                <span class="va">False</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>                <span class="va">True</span>,</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>                <span class="va">True</span>,</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>                <span class="va">True</span>,</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a>                <span class="va">False</span>,</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true"></a>                <span class="va">True</span>,</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true"></a>                <span class="va">False</span>]</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true"></a></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true"></a>        <span class="cf">for</span> i, (x, y, z) <span class="kw">in</span> <span class="bu">enumerate</span>(product(i, i, i)):</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true"></a>            r <span class="op">=</span> foo(x, y, z)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true"></a>            <span class="va">self</span>.assertEquals(expected_results[i], r)</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true"></a></span></code></pre></div>
+<p>In the real world, this would apply to any complex application that deals with lot numeric data and produces a large data set of outputs. It would be beneficial to be able to use past production data(which we assume would have been validated, by its use), and assume that to be a good indicator ot expected output. Coupling the input that went into producing that production data, we could create valuable tests that could be handy as a regression test suite and can also be used effectively while refactoring our code.</p>
+<p>So, how do we avoid such bolier plate code? One option is to use Python’s meta-classes facility to auto-generate our tests.</p>
+<p>Lets do this in steps:</p>
+<ol type="1">
+<li>We will need a factory function that will create our test methods, that we will attach to our test class.</li>
+</ol>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>    <span class="kw">def</span> create_func(test_name, input_args, expected_args):</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>        <span class="kw">def</span> func(<span class="va">self</span>):</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a>            result <span class="op">=</span> foo(<span class="op">*</span>input_args)   <span class="co"># call the Function under test</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a>            <span class="va">self</span>.check_common_invariants(result, expected_args)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a>            func.<span class="va">__name__</span> <span class="op">=</span> <span class="st">&quot;test_&quot;</span> <span class="op">+</span> <span class="bu">str</span>(test_name)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a>            <span class="cf">return</span> func</span></code></pre></div>
+<p>Here the <code>create_func</code>, returns a <code>func</code> object. This <code>func</code> will be attached to the Test class we will create in the next few steps. This <code>func</code> object will be the <code>test_*</code> method in the test class. We will create as many <code>func</code> objects as the number of test inputs we have. The <code>func</code> object, will in turn invoke the <code>foo</code> method and then call all function, that will verify all the invariants that the result of the function has to satisfy.</p>
+<p>Now, let’s look at how we can loop around all test inputs and attach the <code>func</code> object to the test classes. We will create a class, that will act as a meta class for our test class.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>    <span class="kw">class</span> TestFunctionFooMeta(<span class="bu">type</span>):</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a>        <span class="kw">def</span> <span class="fu">__new__</span>(cls, name, bases, attrs):</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a>            <span class="kw">def</span> create_func(test_name, input_args, expected_args):</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>                <span class="kw">def</span> func(<span class="va">self</span>):</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a>                    result <span class="op">=</span> foo(<span class="op">*</span>input_args)   <span class="co"># call the Function under test</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a>                    <span class="va">self</span>.check_common_invariants(result, expected_args)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a>                func.<span class="va">__name__</span> <span class="op">=</span> <span class="st">&quot;test_&quot;</span> <span class="op">+</span> <span class="bu">str</span>(test_name)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a>                <span class="cf">return</span> func</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>            <span class="co"># get_test_args yields (test_name, input_args, expected_value)</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>            <span class="cf">for</span> test_name, input_args, expected_args <span class="kw">in</span> get_test_args():</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>                func <span class="op">=</span> create_func(test_name, input_args, expected_args)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>                attrs[func.<span class="va">__name__</span>] <span class="op">=</span> func</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a>            <span class="cf">return</span> <span class="bu">type</span>.<span class="fu">__new__</span>(cls, name, bases, attrs)</span></code></pre></div>
+<p>We see that we plugged in the <code>create_func</code> into the <strong>new</strong> function of the class we will use to create our Test class. Between, line 11 and 13, we loop over all possible inputs, and expected output, get a new <code>func</code> for each instance and then attach the newly minted <code>func</code> to the Test class that is getting created.</p>
+<p>And, here is the definition of <code>get_test_args</code>.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a>    <span class="kw">def</span> get_test_args():</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a>        x <span class="op">=</span> y <span class="op">=</span> z <span class="op">=</span> [<span class="va">True</span>, <span class="va">False</span>]</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a>        <span class="im">from</span> itertools <span class="im">import</span> product, repeat</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a>        input_args <span class="op">=</span> <span class="bu">list</span>(product(x, y, z))</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a>        expected_args <span class="op">=</span> [</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a>            <span class="va">True</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a>            <span class="va">False</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true"></a>            <span class="va">True</span>,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true"></a>            <span class="va">True</span>,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true"></a>            <span class="va">True</span>,</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true"></a>            <span class="va">False</span>,</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true"></a>            <span class="va">True</span>,</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true"></a>            <span class="va">False</span>]</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true"></a></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true"></a>        test_names <span class="op">=</span> <span class="bu">list</span>(<span class="bu">range</span>(<span class="dv">1</span>, <span class="bu">len</span>(expected_args) <span class="op">+</span> <span class="dv">1</span>))</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true"></a>        <span class="cf">for</span> test_name, i, e <span class="kw">in</span> <span class="bu">zip</span>(test_names, input_args, expected_args):</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true"></a>            <span class="cf">yield</span> (<span class="bu">str</span>(test_name), i, e)</span></code></pre></div>
+<p>All this function does is to generate the input/output mapping. In a real-world example, this method would essentially be assembling the input and grabbing the expected results from production data. That way, effective regression tests can be built using real-data.</p>
+<p>Here is the <a href="https://gist.github.com/gdevanla/3a94956541dc142370efb89313ac09fe">gist</a>.</p>
+    </section>
+  </article>
+</section>
+
+        </main>
+    <footer>
+        <hr>
+        <div class="social">
+          <ul>
+            <li><a href="https://github.com/gdevanla/">GitHub</a></li>
+            <li><a href="https://twitter.com/grdvnl">Twitter</a></li>
+            <li><a href="https://www.linkedin.com/in/grdvnl/">LinkedIn</a></li>
+          </ul>
+          <ul>
+              <li>
+                Site proudly generated by
+                <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+                </li>
+            </ul>
+        </div><!-- /.social -->
+    </footer>
+    </body>
+</html>
