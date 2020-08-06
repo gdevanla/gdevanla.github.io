@@ -4,14 +4,15 @@
         <meta charset="utf-8">
         <meta http-equiv="x-ua-compatible" content="ie=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>blog <| code - Read You A HTML Blaze</title>
+        <title>blog <| code - Read You A Blaze</title>
         <!--web fonts-->
         <link href="http://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css">
         <link href="http://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css">
 
-        -<link rel="stylesheet" href="../css/main.css" type="text/css" />
+        <link rel="stylesheet" href="../css/main.css" type="text/css" />
         <!-- <link rel="stylesheet" href="/css/default.css" type="test/css"/> -->
-        <link rel="stylesheet" href="../css/syntax.css" type="text/css" />
+        <!-- <link rel="stylesheet" href="/css/syntax.css" type="text/css" /> -->
+        <link rel="stylesheet" href="../css/tango.css" type="text/css" />
         <script type="text/javascript">
 
                var _gaq = _gaq || [];
@@ -50,7 +51,7 @@
           <ul>
             <li><a href="../index.html">posts</a></li>
             <li><a href="../archive.html">archives</a></li>
-            <li><a href="pages/books.html">book</a></li>
+            <li><a href="../pages/books.html">RYAS</a></li>
             <li><a href="../about.html">about</a></li>
           </ul>
         </nav>
@@ -59,14 +60,663 @@
             <section id="content" class="body">
   <article>
     <header>
-      <h1>Read You A HTML Blaze</h1>
+      <h1>Read You A Blaze</h1>
       <div class="extra-info">
         <abbr class="published" title="{{ article.date.isoformat() }}">2020-07-31</abbr>
       </div><!-- /.entry-content -->
     </header>
     <section>
-        <h1 id="read-you-a-html-blaze">Read You a HTML Blaze</h1>
-<p>This is a sample page</p>
+        <p>This is a continuation of the ’Read You A _’™ series. In this series we will learn to create a toy version <code>blaze-html</code> library. After reading this article, the reader should be able to easily read through the <code>blaze-markup</code> and <code>blaze-html</code> libraries. In addition the reader can gain good insight in building EDSL support in their projects.</p>
+<h2 id="html-blaze">HTML Blaze</h2>
+<p><code>blaze-html</code> is a Haskell library that provides a simple EDSL that can be used to build HTML pages in Haskell. This approach gives good type level guarantees while building HTML pages while sharing Haskell data structures.</p>
+<p>To understand this tutorial, I suggest you familiarize yourself with some basic usage of this library. You should be able to follow this tutorial just with very basic understanding of how this library can be used.</p>
+<p>Layout of this article:</p>
+<ol type="1">
+<li><a href="#objective">Objective</a></li>
+<li><a href="#first">First Iteration</a></li>
+<li><a href="#second">Second Iteration</a></li>
+<li><a href="#third">Third Iteration</a></li>
+<li><a href="#fourth">Fourth Iteration</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ol>
+<h2 id="objective">Objective</h2>
+<p><a name="objective"></a></p>
+<p>The objective of ’Read You A _’™ series article is to understand how to build libraries in Haskell by reading and learning from some well known Haskell libraries. With that in mind, our objective for this tutorial would be to implement a toy version of the <code>blaze-markup</code> library along with <code>blaze-html</code>.</p>
+<p>In this tutorial, we will not implement all the features of this library. But, we will end up in a position which will easily allow us to extend our toy example to include the other missing features.</p>
+<p>Our goal for this tutorial is to be able to support the following snippet of code that is provided as a first <a href="https://hackage.haskell.org/package/blaze-markup-0.8.2.7/docs/Text-Blaze.html">example</a>.</p>
+<h3 id="code-snippet-that-our-final-implementation-will-support">Code snippet that our final implementation will support</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="ot">{-# LANGUAGE OverloadedStrings #-}</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Prelude</span> <span class="kw">hiding</span> (head, id, div)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Text.Blaze.Html4.Strict</span> <span class="kw">hiding</span> (map)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Text.Blaze.Html4.Strict.Attributes</span> <span class="kw">hiding</span> (title)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Text.Blaze.Renderer.Utf8</span> (renderMarkup)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="ot">page1 ::</span> <span class="dt">Markup</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>page1 <span class="ot">=</span> html <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>    <span class="fu">head</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>        title <span class="st">&quot;Introduction page.&quot;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>        link <span class="op">!</span> rel <span class="st">&quot;stylesheet&quot;</span> <span class="op">!</span> <span class="kw">type</span> <span class="st">&quot;text/css&quot;</span> <span class="op">!</span> href <span class="st">&quot;screen.css&quot;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>    body <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>        <span class="fu">div</span> <span class="op">!</span> <span class="fu">id</span> <span class="st">&quot;header&quot;</span> <span class="op">$</span> <span class="st">&quot;Syntax&quot;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>        p <span class="st">&quot;This is an example of BlazeMarkup syntax.&quot;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>        ul <span class="op">$</span> <span class="fu">mapM_</span> (li <span class="op">.</span> toMarkup <span class="op">.</span> <span class="fu">show</span>) [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a><span class="co">--- And to render, we will also implement the `renderMarkup` function.</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>renderMarkup page1</span></code></pre></div>
+<p>If you are in a hurry and just would like to play with the example yourselves, all code shown in this article is available at <a href="https://github.com/gdevanla/read-you-a-blaze">read-you-a-blaze-html</a>. Each iteration, in this tutorial produces a independent haskell modules. The four modules this tutorial produces are available in this repository.</p>
+<h2 id="about-the-code-snippet">About the Code snippet</h2>
+<p>The code snippet shown about uses functions from <code>blaze-html</code> which internally uses functions provided by the <code>blaze-markup</code> library. In this tutorial, we will be implementing data structures that overlap with both these libraries. It will become clear towards the end regarding where this data structures reside.</p>
+<p>Before, we start off with the toy example, lets review the code snippet closely and identify the parts that we need to build. We are focusing our attention on the <code>page1</code> function. The <code>page1</code> function returns a <code>Markup</code> type, which is defined in (Text.Blaze.Internal)[https://hackage.haskell.org/package/blaze-markup-0.8.2.7/docs/Text-Blaze-Internal.html] as</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">MarkupM</span> a <span class="ot">=</span> <span class="op">...</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>    <span class="op">....</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a>    <span class="op">...</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Markup</span> <span class="ot">=</span> <span class="dt">MarkupM</span> ()</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Html</span> <span class="ot">=</span> <span class="dt">MarkupM</span> ()  <span class="co">-- as defined in blase-html</span></span></code></pre></div>
+<p>Note, there is a type synonym <code>Html</code> in <code>blaze-html</code> that is also defined as <code>type Html = MarkupM ()</code>.</p>
+<p>The <code>MarkupM</code> type will be the algebraic data type we will eventually build.</p>
+<p>Also notice that <code>html</code>, <code>head</code>, <code>body</code> functions take a <code>Monad</code>. All these functions accept the <code>Markup</code> type and return a <code>Markup</code> type. Therefore, what ever data structure we end up with, we will also have to make that data structure implement the <code>Monad</code> interface. We will also eventually define the functions <code>html</code>, <code>head</code>, <code>title</code> etc.</p>
+<p>Eventually, we also want to implement a version of <code>renderMarkup</code> to render the data structure we cook up. We will add an implementation for that function as we go.</p>
+<p>As you notice, we are taking a top down approach here. We are going to start with specific functions/data types that support HTML to help us support this code snippet. Gradually, we will generalize our code to work with any markup and not just HTML.</p>
+<hr />
+<p><a name="first"></a></p>
+<h2 id="first-iteration-first.hs">First Iteration (<a href="https://github.com/gdevanla/read-you-a-blaze/blob/master/app/first.hs">first.hs</a>)</h2>
+<p>In our first iteration, we are going to support a slightly modified version of <code>page1</code> that will help us build some understanding on the basic data structures we need.</p>
+<p>Notice that functions that are used in the original <code>page1</code> function, roughly have the following types:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="co">-- for attributes</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Attribute</span> <span class="ot">=</span> _  <span class="ot">&lt;-</span> <span class="dt">Yet</span> to be defined</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a><span class="ot">href ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a><span class="kw">type</span><span class="ot"> ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a><span class="fu">id</span><span class="ot"> ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a><span class="ot">rel ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a><span class="co">-- for functions working on `Markup`, we have</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Html</span> <span class="ot">=</span> _  <span class="ot">&lt;-</span> <span class="dt">Yet</span> to be defined</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a><span class="ot">link ::</span> <span class="dt">Html</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a><span class="ot">title ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true"></a><span class="fu">head</span><span class="ot"> ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true"></a><span class="fu">div</span><span class="ot"> ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true"></a><span class="ot">p ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true"></a><span class="ot">ul ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true"></a><span class="ot">li ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true"></a></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true"></a><span class="co">-- and some helper functions</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true"></a>(<span class="op">!</span>) <span class="ot">=</span> _</span></code></pre></div>
+<p>The types of the above listed function informs us that we need two types <code>Html</code> and <code>Attributes</code>. Rather than work with these helper function, lets implement a more concrete version of <code>page1</code> and then we will abstract away parts of it to use the helper functions.</p>
+<p>Here is the modified version of <code>page1</code> we will support in our first iteration:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="ot">page1 ::</span> <span class="dt">Html</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a>page1 <span class="ot">=</span> <span class="kw">let</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a>  link' <span class="ot">=</span> <span class="dt">Link</span> <span class="op">!</span> rel <span class="st">&quot;style.css&quot;</span> <span class="op">!</span> type_ <span class="st">&quot;text/html&quot;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a>  title' <span class="ot">=</span> <span class="dt">Title</span> <span class="st">&quot;Introduction page.&quot;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a>  head' <span class="ot">=</span> <span class="dt">Head</span> (<span class="dt">Append</span> link' title')</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a>  div' <span class="ot">=</span> mult <span class="dt">Div</span> (id_ <span class="st">&quot;header&quot;</span>) <span class="op">$</span> (<span class="dt">Content</span> <span class="st">&quot;Syntax&quot;</span>)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a>  p' <span class="ot">=</span> <span class="dt">P</span> <span class="op">$</span> <span class="dt">Content</span> <span class="st">&quot;This is an example of Blazemarkup syntax.&quot;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true"></a>  ul' <span class="ot">=</span> <span class="dt">UL</span> <span class="op">$</span> foldHtml <span class="op">$</span> (<span class="fu">map</span> (<span class="dt">LI</span> <span class="op">.</span> toMarkup <span class="op">.</span> <span class="fu">show</span>) [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>])</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true"></a>  body' <span class="ot">=</span> <span class="dt">Body</span> (<span class="dt">Append</span> (<span class="dt">Append</span> div' p') ul')</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true"></a>  html' <span class="ot">=</span> <span class="dt">HTML</span> <span class="op">$</span> <span class="dt">Append</span> head' body'</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true"></a>  <span class="kw">in</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true"></a>    html'</span></code></pre></div>
+<p>Notice that we have replaced calls to helper function with some <code>data constructors</code> which we are yet to define. Since, all helper function’s are returning <code>Html</code> as the data structure, lets create one that fits that setup.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Attribute</span> <span class="ot">=</span> <span class="dt">Attribute</span> <span class="dt">String</span> <span class="dt">String</span></span></code></pre></div>
+<p>And, for Markup, let’s define. (Since, we are dealing concretely with HTML at this stage, lets name the data type accordingly</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Html</span> <span class="ot">=</span> <span class="dt">HTML</span> <span class="dt">Html</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Head</span> <span class="dt">Html</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Body</span> <span class="dt">Html</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Link</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Title</span> <span class="dt">String</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">HRef</span> <span class="dt">String</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Div</span> <span class="dt">Html</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">UL</span> <span class="dt">Html</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">LI</span> <span class="dt">Html</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">P</span> <span class="dt">Html</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Append</span> <span class="dt">Html</span> <span class="dt">Html</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">AddAttribute</span> <span class="dt">Attribute</span> <span class="dt">Html</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Content</span> <span class="dt">String</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Empty</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true"></a></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Markup</span> <span class="ot">=</span> <span class="dt">Html</span></span></code></pre></div>
+<p>Note, the <code>Link</code>, <code>Title</code>, <code>HRef</code>, <code>Content</code> and <code>Empty</code> are <code>Leaf</code> values. The other data constructors are recursive. Now, with this type, we can start filling in our place holder functions. This data structure covers all the values that are used in the first version of <code>page1</code> function.</p>
+<p>We will also add the following helper functions.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a><span class="co">-- helper functions to build attributes</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a><span class="ot">href ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a>href value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;href&quot;</span> value</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a><span class="ot">type_ ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a>type_ value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;type&quot;</span> value</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a><span class="fu">id</span><span class="ot"> ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a><span class="fu">id</span> value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;id&quot;</span> value</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a><span class="ot">rel ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true"></a>rel value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;rel=&quot;</span> value</span></code></pre></div>
+<p>Other helpers</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a><span class="ot">toMarkup ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>toMarkup s <span class="ot">=</span> <span class="dt">Content</span> s</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a><span class="ot">(!) ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a>(<span class="op">!</span>) html attr <span class="ot">=</span> <span class="dt">AddAttribute</span> attr html</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a><span class="co">-- We will replace this definition later. For now assume, it is a version of (!) that supports a slightly different type.</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a><span class="ot">mult ::</span> (<span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span>) <span class="ot">-&gt;</span> <span class="dt">Attribute</span> <span class="ot">-&gt;</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a>mult html1 attr <span class="ot">=</span> \html2 <span class="ot">-&gt;</span> <span class="dt">AddAttribute</span> attr (html1 html2)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true"></a></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true"></a><span class="ot">foldHtml ::</span> [<span class="dt">Html</span>] <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true"></a>foldHtml (x<span class="op">:</span>xs) <span class="ot">=</span> <span class="dt">Append</span> x (foldHtml xs)</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true"></a>foldHtml [] <span class="ot">=</span> <span class="dt">Empty</span></span></code></pre></div>
+<p>We will also need a function that implements <code>renderMarkup</code>. The first iteration of that function will be as follows. The <code>renderMarkup</code> function walks over the <code>Html</code> type and constructs the <code>HTML</code> string.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="ot">renderMarkup ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">HTML</span> inner) <span class="ot">=</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a>        <span class="st">&quot;&lt;html&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> renderMarkup <span class="st">&quot;&quot;</span> inner <span class="op">++</span> <span class="st">&quot;&lt;/html&gt;&quot;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Head</span> inner) <span class="ot">=</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true"></a>        <span class="st">&quot;&lt;head&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> renderMarkup <span class="st">&quot;&quot;</span> inner <span class="op">++</span> <span class="st">&quot;&lt;/head&gt;&quot;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Body</span> inner) <span class="ot">=</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true"></a>        <span class="st">&quot;&lt;body&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> renderMarkup <span class="st">&quot;&quot;</span> inner <span class="op">++</span> <span class="st">&quot;&lt;/body&gt;&quot;</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">P</span> inner) <span class="ot">=</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true"></a>        <span class="st">&quot;&lt;p&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> renderMarkup <span class="st">&quot;&quot;</span> inner <span class="op">++</span> <span class="st">&quot;&lt;/p&gt;&quot;</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true"></a>renderMarkup attrs <span class="dt">Link</span> <span class="ot">=</span> <span class="st">&quot;&lt;link&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Title</span> s) <span class="ot">=</span> <span class="st">&quot;&lt;title&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> s <span class="op">++</span> <span class="st">&quot;&lt;/title&gt;&quot;</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">HRef</span> content) <span class="ot">=</span> <span class="st">&quot;&lt;a&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> content <span class="op">++</span> <span class="st">&quot;&lt;/a&gt;&quot;</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Div</span> content) <span class="ot">=</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true"></a>        <span class="st">&quot;&lt;div&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> (renderMarkup <span class="st">&quot;&quot;</span> content) <span class="op">++</span> <span class="st">&quot;&lt;/div&gt;&quot;</span></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">UL</span> content) <span class="ot">=</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true"></a>        <span class="st">&quot;&lt;ul&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> (renderMarkup <span class="st">&quot;&quot;</span> content) <span class="op">++</span> <span class="st">&quot;&lt;/ul&gt;&quot;</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">LI</span> content) <span class="ot">=</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true"></a>        <span class="st">&quot;&lt;li&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> (renderMarkup <span class="st">&quot;&quot;</span> content) <span class="op">++</span> <span class="st">&quot;&lt;/li&gt;&quot;</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Append</span> html1 html2) <span class="ot">=</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true"></a>  (renderMarkup attrs html1) <span class="op">++</span> (renderMarkup attrs html2)</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">AddAttribute</span> (<span class="dt">Attribute</span> k v) html) <span class="ot">=</span> <span class="fu">flip</span> renderMarkup html <span class="op">$</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true"></a>  <span class="st">&quot; &quot;</span> <span class="op">++</span> k <span class="op">++</span> <span class="st">&quot;\&quot;&quot;</span> <span class="op">++</span> v <span class="op">++</span> <span class="st">&quot;\&quot;&quot;</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Content</span> content) <span class="ot">=</span> content</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true"></a>renderMarkup attrs <span class="dt">Empty</span> <span class="ot">=</span> <span class="st">&quot;&quot;</span></span></code></pre></div>
+<p>With the above definitions we are ready to test out our first iteration. The fully implemented example of our first iteration can be found here: <a href="https://github.com/gdevanla/read-you-a-blaze/blob/master/app/first.hs">first.hs</a></p>
+<p>Running this should produce the following output:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="kw">&lt;html&gt;&lt;head&gt;&lt;link</span><span class="ot"> rel=</span><span class="st">&quot;style.css&quot;</span><span class="kw">&gt;&lt;title&gt;</span>Introduction page.<span class="kw">&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;div</span><span class="ot"> id</span><span class="er">&quot;header&quot;</span><span class="kw">&gt;</span>Syntax<span class="kw">&lt;/div&gt;&lt;p&gt;</span>This is an example of Blazemarkup syntax.<span class="kw">&lt;/p&gt;&lt;ul&gt;&lt;li&gt;</span>1<span class="kw">&lt;/li&gt;&lt;li&gt;</span>2<span class="kw">&lt;/li&gt;&lt;li&gt;</span>3<span class="kw">&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</span></span></code></pre></div>
+<h4 id="end-of-first-iteration">End of first iteration</h4>
+<p>We created a concrete version data structures that will help us construct a HTML string. Our <code>page1</code> function uses these concrete data structures to build the <code>HTML</code> structure which can be converted to a <code>HTML</code> string using the <code>renderMarkup</code> function.</p>
+<p>But, <code>page1</code> is very verbose compared to the original version. We will need to extend our definitions to improve on the <code>page1</code> function.</p>
+<hr />
+<p><a name="second"></a></p>
+<h2 id="second-iteration-second.hs">Second Iteration (<a href="https://github.com/gdevanla/read-you-a-blaze/blob/master/app/second.hs">second.hs</a>)</h2>
+<p>As we have seen in the first iteration, it would be nice to implement functionality to support the original <code>page1</code> function. We need to construct some sort of an EDSL to support this functionality. We will just do that in this iteration.</p>
+<p>We need to support the EDSL used in <code>page1</code>. To add that support, we will provide <code>Functor</code>, <code>Applicative</code> and <code>Monad</code> instances to the <code>Html</code> data type. But, before we do that, we need to update our <code>Html</code> type to accept a type variable.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">HtmlM</span> a <span class="ot">=</span> <span class="dt">Html</span> (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Head</span> (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Body</span> (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Link</span> a</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Title</span> <span class="dt">String</span> a</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">HRef</span> <span class="dt">String</span> a</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Div</span> (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">UL</span> (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">LI</span> (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">P</span> (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a>  <span class="op">|</span> <span class="kw">forall</span> b<span class="op">.</span> <span class="dt">Append</span> (<span class="dt">HtmlM</span> b) (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">AddAttribute</span> <span class="dt">Attribute</span> (<span class="dt">HtmlM</span> a)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Content</span> <span class="dt">String</span> a</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Empty</span> a</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true"></a><span class="co">-- type synonyms for convenience</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Html</span> <span class="ot">=</span> <span class="dt">HtmlM</span> ()</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Markup</span> <span class="ot">=</span> <span class="dt">HtmlM</span> ()</span></code></pre></div>
+<p>We also also build a function’s which walks this type and yields the embedded value:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a><span class="co">-- Walk through the Html data structure to return the embedded value. Used in Functor, Applicative and Monad instances</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a><span class="ot">htmlValue ::</span> <span class="dt">HtmlM</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true"></a>htmlValue (<span class="dt">Html</span> x          ) <span class="ot">=</span> htmlValue x</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true"></a>htmlValue (<span class="dt">Head</span> x          ) <span class="ot">=</span> htmlValue x</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true"></a>htmlValue (<span class="dt">Link</span> x          ) <span class="ot">=</span> x</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true"></a>htmlValue (<span class="dt">HRef</span> _ x) <span class="ot">=</span> x</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true"></a>htmlValue (<span class="dt">Div</span> x) <span class="ot">=</span> htmlValue x</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true"></a>htmlValue (<span class="dt">LI</span> x) <span class="ot">=</span> htmlValue x</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true"></a>htmlValue (<span class="dt">UL</span> x) <span class="ot">=</span> htmlValue x</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true"></a>htmlValue (<span class="dt">P</span> x) <span class="ot">=</span> htmlValue x</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true"></a>htmlValue (<span class="dt">Append</span>       _ x) <span class="ot">=</span> htmlValue x</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true"></a>htmlValue (<span class="dt">AddAttribute</span> _ x) <span class="ot">=</span> htmlValue x</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true"></a>htmlValue (<span class="dt">Content</span>      _ x) <span class="ot">=</span> x</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true"></a>htmlValue (<span class="dt">Empty</span> x         ) <span class="ot">=</span> x</span></code></pre></div>
+<p>We also have to accordingly update the version of <code>renderMarkup</code> that we used in <code>first.hs</code> as follows:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="co">--- Same as the version in first.hs</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true"></a><span class="ot">renderMarkup ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">HtmlM</span> a <span class="ot">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Html</span> inner) <span class="ot">=</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true"></a>        <span class="st">&quot;&lt;html&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> renderMarkup <span class="st">&quot;&quot;</span> inner <span class="op">++</span> <span class="st">&quot;&lt;/html&gt;&quot;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Head</span> inner) <span class="ot">=</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true"></a>        <span class="st">&quot;&lt;head&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> renderMarkup <span class="st">&quot;&quot;</span> inner <span class="op">++</span> <span class="st">&quot;&lt;/head&gt;&quot;</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Body</span> inner) <span class="ot">=</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true"></a>        <span class="st">&quot;&lt;body&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> renderMarkup <span class="st">&quot;&quot;</span> inner <span class="op">++</span> <span class="st">&quot;&lt;/body&gt;&quot;</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">P</span> inner) <span class="ot">=</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true"></a>        <span class="st">&quot;&lt;p&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> renderMarkup <span class="st">&quot;&quot;</span> inner <span class="op">++</span> <span class="st">&quot;&lt;/p&gt;&quot;</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Link</span> _) <span class="ot">=</span> <span class="st">&quot;&lt;link&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Title</span> s _ ) <span class="ot">=</span> <span class="st">&quot;&lt;title&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> s <span class="op">++</span> <span class="st">&quot;&lt;/title&gt;&quot;</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">HRef</span> content _) <span class="ot">=</span> <span class="st">&quot;&lt;a&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> content <span class="op">++</span> <span class="st">&quot;&lt;/a&gt;&quot;</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Div</span> content) <span class="ot">=</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true"></a>        <span class="st">&quot;&lt;div&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> (renderMarkup <span class="st">&quot;&quot;</span> content) <span class="op">++</span> <span class="st">&quot;&lt;/div&gt;&quot;</span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">UL</span> content) <span class="ot">=</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true"></a>        <span class="st">&quot;&lt;ul&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> (renderMarkup <span class="st">&quot;&quot;</span> content) <span class="op">++</span> <span class="st">&quot;&lt;/ul&gt;&quot;</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">LI</span> content) <span class="ot">=</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true"></a>        <span class="st">&quot;&lt;li&quot;</span> <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> (renderMarkup <span class="st">&quot;&quot;</span> content) <span class="op">++</span> <span class="st">&quot;&lt;/li&gt;&quot;</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Append</span> html1 html2) <span class="ot">=</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true"></a>  (renderMarkup attrs html1) <span class="op">++</span> (renderMarkup attrs html2)</span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">AddAttribute</span> (<span class="dt">Attribute</span> k v) html) <span class="ot">=</span> <span class="fu">flip</span> renderMarkup html <span class="op">$</span></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true"></a>  <span class="st">&quot; &quot;</span> <span class="op">++</span> k <span class="op">++</span> <span class="st">&quot;\&quot;&quot;</span> <span class="op">++</span> v <span class="op">++</span> <span class="st">&quot;\&quot;&quot;</span></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Content</span> content _) <span class="ot">=</span> content</span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true"></a>renderMarkup attrs (<span class="dt">Empty</span> _) <span class="ot">=</span> <span class="st">&quot;&quot;</span></span></code></pre></div>
+<p>Also, update the helper functions</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="ot">toMarkup ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a>toMarkup s <span class="ot">=</span> <span class="dt">Content</span> s ()</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true"></a><span class="ot">foldHtml ::</span> [<span class="dt">Html</span>] <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true"></a>foldHtml (x<span class="op">:</span>xs) <span class="ot">=</span> <span class="dt">Append</span> x (foldHtml xs)</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true"></a>foldHtml [] <span class="ot">=</span> <span class="dt">Empty</span> ()</span></code></pre></div>
+<p>Once we have made these updates we are ready to implement the instances.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="co">-- Need to update type of Append with existential</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">HtmlM</span> <span class="kw">where</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true"></a>        <span class="fu">fmap</span> f x <span class="ot">=</span> <span class="dt">Append</span> x (<span class="dt">Empty</span> (f (htmlValue x)))</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Applicative</span> <span class="dt">HtmlM</span> <span class="kw">where</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true"></a>        <span class="fu">pure</span> x <span class="ot">=</span> <span class="dt">Empty</span> x</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true"></a></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true"></a>        <span class="co">-- Why are we not discarding the first value?</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true"></a>        (<span class="op">*&gt;</span>) <span class="ot">=</span> <span class="dt">Append</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true"></a>        (<span class="op">&lt;*&gt;</span>) x y <span class="ot">=</span> <span class="co">--Empty (htmlValue x (htmlValue y))</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true"></a>                <span class="dt">Append</span> (<span class="dt">Append</span> x y) (<span class="dt">Empty</span> (htmlValue x (htmlValue y)))</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true"></a></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">HtmlM</span> <span class="kw">where</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true"></a>        <span class="fu">return</span> <span class="ot">=</span> <span class="fu">pure</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true"></a>        m <span class="op">&gt;&gt;=</span> f <span class="ot">=</span> <span class="dt">Append</span> m (f (htmlValue m))</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true"></a>        (<span class="op">&gt;&gt;</span>) <span class="ot">=</span> <span class="dt">Append</span></span></code></pre></div>
+<p>Note that the <code>Applicative</code> and <code>Monad</code> instances here <code>append</code> the <code>Html</code>. For our <code>page1</code> to work it is sufficient to implement the <code>Monad</code> instance. But, we have provided the <code>Applicative</code> instance for completeness.</p>
+<p>And, finally, our improved version of <code>page1</code> is as follows. Note, that within each <code>do</code> we <code>append</code> the HTML parts and provide those parts as arguments to <code>Html</code>, <code>Head</code> and <code>Body</code>.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="ot">page1 ::</span> <span class="dt">Html</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a>page1 <span class="ot">=</span> <span class="dt">Html</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true"></a>  <span class="dt">Head</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true"></a>    <span class="dt">Link</span> () <span class="op">!</span> rel <span class="st">&quot;style.css&quot;</span> <span class="op">!</span> type_ <span class="st">&quot;text/html&quot;</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true"></a>    <span class="dt">Title</span> <span class="st">&quot;Introduction page.&quot;</span> ()</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true"></a>  <span class="dt">Body</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true"></a>    mult <span class="dt">Div</span> (<span class="fu">id</span> <span class="st">&quot;header&quot;</span>) <span class="op">$</span> <span class="dt">Content</span> <span class="st">&quot;Syntax&quot;</span> ()</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true"></a>    <span class="dt">P</span> <span class="op">$</span> <span class="dt">Content</span> <span class="st">&quot;This is an example of Blazemarkup syntax.&quot;</span> ()</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true"></a>    <span class="dt">UL</span> <span class="op">$</span> foldHtml <span class="op">$</span> (<span class="fu">map</span> (<span class="dt">LI</span> <span class="op">.</span> toMarkup <span class="op">.</span> <span class="fu">show</span>) [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>])</span></code></pre></div>
+<h4 id="end-of-second-iteration">End of Second Iteration</h4>
+<p>We are pretty close know to the original implementation of <code>page1</code>. We just need to provide some more syntax sugar. We can replace calls to <code>Content "Syntax" ()</code> with just <code>"Syntax"</code>. We can do this by providing a IsString instance.</p>
+<p>First, we add this import and extension</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a><span class="ot">{-# LANGUAGE TypeSynonymInstances #-}</span> <span class="co">-- needed for ToMarkup String</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">GHC.Exts</span>  (<span class="dt">IsString</span> (..))</span></code></pre></div>
+<p>and then provide an <code>IsString</code> instance for the <code>HtmlM a</code> type as follows:</p>
+<pre><code>instance (a ~ ()) =&gt; IsString (HtmlM a) where
+  fromString x = Content (fromString x) mempty</code></pre>
+<p>Also, since <code>HtmlM a</code> is a monad, we can replace the call for <code>foldHtml</code> with the standard ‘mapM_’ function. The revised <code>page1</code> after removing call to <code>Content</code> and <code>foldHTML</code>.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a><span class="ot">page1 ::</span> <span class="dt">Html</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true"></a>page1 <span class="ot">=</span> <span class="dt">Html</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true"></a>        <span class="dt">Head</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true"></a>                <span class="dt">Link</span> () <span class="op">!</span> rel <span class="st">&quot;style.css&quot;</span> <span class="op">!</span> type_ <span class="st">&quot;text/html&quot;</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true"></a>                <span class="dt">Title</span> <span class="st">&quot;Introduction page.&quot;</span> ()</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true"></a>        <span class="dt">Body</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true"></a>                mult <span class="dt">Div</span> (<span class="fu">id</span> <span class="st">&quot;header&quot;</span>) <span class="op">$</span> <span class="st">&quot;Syntax&quot;</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true"></a>                <span class="dt">P</span> <span class="op">$</span> <span class="st">&quot;This is an example of Blazemarkup syntax.&quot;</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true"></a>                <span class="dt">UL</span> <span class="op">$</span> <span class="fu">mapM_</span> (<span class="dt">LI</span> <span class="op">.</span> toMarkup <span class="op">.</span> <span class="fu">show</span>) [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]</span></code></pre></div>
+<p><a name="third"></a></p>
+<h3 id="third-iteration-third.hs">Third Iteration (<a href="https://github.com/gdevanla/read-you-a-blaze/blob/master/app/third.hs">third.hs</a>)</h3>
+<p>If we review the final version of <code>page1</code> from the second iteration you will notice that the client/user directly is using the <code>HtmlM a</code> data structure. We would like to abstract that away into some helper function. This gives us the flexibility of updating/extending the data structure without affecting the client code. In this iteration we will do just that. We will provide helper functions that the client can use to construct these HTML elements and attributes.</p>
+<p>Here are the list of helper functions we need to define:</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a><span class="co">-- HTML helpers</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true"></a><span class="ot">html ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true"></a>html <span class="ot">=</span> <span class="dt">Html</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true"></a></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true"></a><span class="fu">head</span><span class="ot"> ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true"></a><span class="fu">head</span> <span class="ot">=</span> <span class="dt">Head</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true"></a><span class="ot">link ::</span> <span class="dt">Html</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true"></a>link <span class="ot">=</span> <span class="dt">Link</span> ()</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true"></a></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true"></a><span class="ot">title ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true"></a>title s <span class="ot">=</span> <span class="dt">Title</span> s ()</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true"></a></span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true"></a><span class="fu">div</span><span class="ot"> ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true"></a><span class="fu">div</span> <span class="ot">=</span> <span class="dt">Div</span></span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true"></a></span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true"></a><span class="ot">p ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true"></a>p <span class="ot">=</span> <span class="dt">P</span></span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true"></a></span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true"></a><span class="ot">ul ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true"></a>ul <span class="ot">=</span> <span class="dt">UL</span></span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true"></a></span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true"></a><span class="ot">li ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb22-24"><a href="#cb22-24" aria-hidden="true"></a>li <span class="ot">=</span> <span class="dt">LI</span></span>
+<span id="cb22-25"><a href="#cb22-25" aria-hidden="true"></a></span>
+<span id="cb22-26"><a href="#cb22-26" aria-hidden="true"></a><span class="ot">body ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb22-27"><a href="#cb22-27" aria-hidden="true"></a>body <span class="ot">=</span> <span class="dt">Body</span></span></code></pre></div>
+<p>And now the client can use these helper functions rather than constructing the HTML elements using the <code>HtmlM a</code> data type. There is another benefit for this abstraction that will become clear when we do our final <a href="#fourth">fourth</a> iteration.</p>
+<p>After replacing the <code>page1</code> function with the helper function, the new version of <code>page</code> will be as follows:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a><span class="ot">page1 ::</span> <span class="dt">Html</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true"></a>page1 <span class="ot">=</span> html <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true"></a>        <span class="fu">head</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true"></a>                link <span class="op">!</span> rel <span class="st">&quot;style.css&quot;</span> <span class="op">!</span> type_ <span class="st">&quot;text/html&quot;</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true"></a>                title <span class="st">&quot;Introduction page.&quot;</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true"></a>        body <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true"></a>                mult <span class="dt">Div</span> (<span class="fu">id</span> <span class="st">&quot;header&quot;</span>) <span class="op">$</span> <span class="st">&quot;Syntax&quot;</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true"></a>                p <span class="op">$</span> <span class="st">&quot;This is an example of Blazemarkup syntax.&quot;</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true"></a>                ul <span class="op">$</span> <span class="fu">mapM_</span> (li <span class="op">.</span> toMarkup <span class="op">.</span> <span class="fu">show</span>) [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]</span></code></pre></div>
+<p>Almost close!</p>
+<p>We just need to replace <code>mult</code> with a <code>(!)</code> call and we have achieved the objective we started with. Let’s wrap up this iteration with that change. To replace <code>mul</code> with <code>(!)</code>, we need to define a <code>type class</code> that will support both <code>HtmlM a</code> and <code>HtmlM a -&gt; HtmlM a</code>.</p>
+<p>First add some language extensions</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a><span class="ot">{-# LANGUAGE FlexibleInstances    #-}</span></span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a><span class="kw">class</span> <span class="dt">Attributable</span> h <span class="kw">where</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true"></a><span class="ot">    (!) ::</span> h <span class="ot">-&gt;</span> <span class="dt">Attribute</span> <span class="ot">-&gt;</span> h</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true"></a></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Attributable</span> (<span class="dt">Html</span>) <span class="kw">where</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true"></a>  (<span class="op">!</span>) html attr <span class="ot">=</span> <span class="dt">AddAttribute</span> attr html</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true"></a></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Attributable</span> (<span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span> ) <span class="kw">where</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true"></a>  f <span class="op">!</span> attr <span class="ot">=</span> \f1 <span class="ot">-&gt;</span> <span class="dt">AddAttribute</span> attr <span class="op">$</span> f f1</span></code></pre></div>
+<p>Also, we remove our previous implementation of <code>(!)</code>.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true"></a><span class="co">-- Remove this function after adding the above Attributable interfaces</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true"></a><span class="ot">(!) ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Attribute</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true"></a>(<span class="op">!</span>) html attr <span class="ot">=</span> <span class="dt">AddAttribute</span> attr html</span></code></pre></div>
+<p>The first instance will support leaf level <code>Html</code> elements such as <code>Link</code>, <code>Title</code> etc. The second instance is for elements such as <code>Div</code>, <code>P</code> etc. That is any element, that can embed more <code>Html</code> elements.</p>
+<p>With that change, we have our final <code>page1</code> function which looks exactly like the one we start off with as our objective.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true"></a><span class="ot">page1 ::</span> <span class="dt">Html</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true"></a>page1 <span class="ot">=</span> html <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true"></a>        <span class="fu">head</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true"></a>                link <span class="op">!</span> rel <span class="st">&quot;style.css&quot;</span> <span class="op">!</span> type_ <span class="st">&quot;text/html&quot;</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true"></a>                title <span class="st">&quot;Introduction page.&quot;</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true"></a>        body <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true"></a>                <span class="fu">div</span> <span class="op">!</span> (<span class="fu">id</span> <span class="st">&quot;header&quot;</span>) <span class="op">$</span> <span class="st">&quot;Syntax&quot;</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true"></a>                p <span class="op">$</span> <span class="st">&quot;This is an example of Blazemarkup syntax.&quot;</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true"></a>                ul <span class="op">$</span> <span class="fu">mapM_</span> (li <span class="op">.</span> toMarkup <span class="op">.</span> <span class="fu">show</span>) [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]</span></code></pre></div>
+<hr />
+<p><a name="fourth"></a></p>
+<h3 id="one-last-iteration-fourth.hs">One Last Iteration (<a href="https://github.com/gdevanla/read-you-a-blaze/blob/master/app/fourth.hs">fourth.hs</a>)</h3>
+<p>So, far we have seen that the algebraic data type <code>HtmlM a</code> only works for Html. But, if you look closely the pattern we followed so far would work for a wider range of Markups. Html or other Markups have a tree like structure with Parent Nodes, Siblings and Leaf Nodes with attributes attaching themselves to these nodes. If we can transform our current <code>HtmlM a</code> into a more generic structure, then we could extend our library to other markups that share similar structure. In this iteration, that is precisely what we will do. We will update the code to make it support a more general markup declaration and see how it works with the concrete HTML implementation.</p>
+<p>As stated, if we view the <code>Markup</code> syntax as a syntax to build a tree, then we can arrive at this type:</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Tag</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Open</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Close</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Key</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Value</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true"></a></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">MarkupM</span> a</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true"></a>  <span class="ot">=</span> <span class="dt">Parent</span> <span class="dt">Tag</span> <span class="dt">Open</span> <span class="dt">Close</span> (<span class="dt">MarkupM</span> a)</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Leaf</span> <span class="dt">Tag</span> <span class="dt">Open</span> <span class="dt">Close</span> a</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Content</span> <span class="dt">String</span> a</span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true"></a>  <span class="op">|</span> <span class="kw">forall</span> b<span class="op">.</span> <span class="dt">Append</span> (<span class="dt">MarkupM</span> b) (<span class="dt">MarkupM</span> a)</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">AddAttribute</span> <span class="dt">Attribute</span> (<span class="dt">MarkupM</span> a)</span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Empty</span> a</span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true"></a></span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Markup</span> <span class="ot">=</span> <span class="dt">MarkupM</span> ()</span></code></pre></div>
+<p>Note that <code>leaf</code> elements like <code>Link</code>, <code>Href</code>, <code>Content</code> in previous <code>HtmlM a</code> declaration or just <code>Leaf</code> here, and elements that support HTML embedding like <code>Div</code>, <code>P</code> can be represented as <code>Parent</code> here. The values to the data constructor have been added to replicate the declaration in the (<code>Text.Blaze.Internal</code>)[http://hackage.haskell.org/package/blaze-markup-0.8.2.1/docs/src/Text.Blaze.Internal.html#MarkupM]</p>
+<p>With that it is time to update our <code>htmlValue</code> function and replace it with the generic <code>markupValue</code> function. This again is the same as the <code>markupValue</code> function in (<code>Text.Blaze.Internal</code>)[http://hackage.haskell.org/package/blaze-markup-0.8.2.1/docs/src/Text.Blaze.Internal.html]</p>
+<p>Here are the updated definitions:</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true"></a><span class="ot">markupValue ::</span> <span class="dt">MarkupM</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true"></a>markupValue (<span class="dt">Parent</span> _ _ _ x) <span class="ot">=</span> markupValue x</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true"></a>markupValue (<span class="dt">Leaf</span> _ _ _ x) <span class="ot">=</span> x</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true"></a>markupValue (<span class="dt">Content</span> _ x) <span class="ot">=</span> x</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true"></a>markupValue (<span class="dt">Append</span> _ m1) <span class="ot">=</span> markupValue m1</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true"></a>markupValue (<span class="dt">AddAttribute</span> _  m1) <span class="ot">=</span> markupValue m1</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true"></a>markupValue (<span class="dt">Empty</span> x) <span class="ot">=</span> x</span></code></pre></div>
+<p>We also need to apply similar updates to the <code>Functor</code>, <code>Applicative</code> and <code>Monad</code> instances, and also to <code>IsString</code> and <code>Attributable</code> instances.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true"></a><span class="co">-- Need to update type of Append with existential</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">MarkupM</span> <span class="kw">where</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true"></a>  <span class="fu">fmap</span> f x <span class="ot">=</span> <span class="dt">Append</span> x (<span class="dt">Empty</span> (f (markupValue x)))</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true"></a></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true"></a><span class="co">-- Why isn't this just an `(Empty (htmlValue x (htmlValue y)))`</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true"></a><span class="co">-- The `homomorphism` law is not followed here.</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Applicative</span> <span class="dt">MarkupM</span> <span class="kw">where</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true"></a>  <span class="fu">pure</span> x <span class="ot">=</span> <span class="dt">Empty</span> x</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true"></a></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true"></a>  <span class="co">-- Why are we not discarding the first value?</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true"></a>  (<span class="op">*&gt;</span>) <span class="ot">=</span> <span class="dt">Append</span></span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true"></a>  (<span class="op">&lt;*&gt;</span>) x y <span class="ot">=</span> <span class="co">--Empty (htmlValue x (htmlValue y))</span></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true"></a>    <span class="dt">Append</span> (<span class="dt">Append</span> x y) (<span class="dt">Empty</span> (markupValue x (markupValue y)))</span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true"></a></span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">MarkupM</span> <span class="kw">where</span></span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true"></a>  <span class="fu">return</span> <span class="ot">=</span> <span class="fu">pure</span></span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true"></a></span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true"></a>  m <span class="op">&gt;&gt;=</span> f <span class="ot">=</span> <span class="dt">Append</span> m (f (markupValue m))</span>
+<span id="cb30-19"><a href="#cb30-19" aria-hidden="true"></a>  (<span class="op">&gt;&gt;</span>) <span class="ot">=</span> <span class="dt">Append</span></span>
+<span id="cb30-20"><a href="#cb30-20" aria-hidden="true"></a></span>
+<span id="cb30-21"><a href="#cb30-21" aria-hidden="true"></a><span class="co">-- other instances</span></span>
+<span id="cb30-22"><a href="#cb30-22" aria-hidden="true"></a><span class="kw">instance</span> (a <span class="op">~</span> ()) <span class="ot">=&gt;</span> <span class="dt">IsString</span> (<span class="dt">MarkupM</span> a) <span class="kw">where</span></span>
+<span id="cb30-23"><a href="#cb30-23" aria-hidden="true"></a>  fromString x <span class="ot">=</span> <span class="dt">Content</span> (fromString x) <span class="fu">mempty</span></span>
+<span id="cb30-24"><a href="#cb30-24" aria-hidden="true"></a></span>
+<span id="cb30-25"><a href="#cb30-25" aria-hidden="true"></a><span class="kw">class</span> <span class="dt">Attributable</span> h <span class="kw">where</span></span>
+<span id="cb30-26"><a href="#cb30-26" aria-hidden="true"></a><span class="ot">    (!) ::</span> h <span class="ot">-&gt;</span> <span class="dt">Attribute</span> <span class="ot">-&gt;</span> h</span>
+<span id="cb30-27"><a href="#cb30-27" aria-hidden="true"></a></span>
+<span id="cb30-28"><a href="#cb30-28" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Attributable</span> <span class="dt">Markup</span> <span class="kw">where</span></span>
+<span id="cb30-29"><a href="#cb30-29" aria-hidden="true"></a>  (<span class="op">!</span>) html attr <span class="ot">=</span> <span class="dt">AddAttribute</span> attr html</span>
+<span id="cb30-30"><a href="#cb30-30" aria-hidden="true"></a></span>
+<span id="cb30-31"><a href="#cb30-31" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Attributable</span> (<span class="dt">Markup</span> <span class="ot">-&gt;</span> <span class="dt">Markup</span>) <span class="kw">where</span></span>
+<span id="cb30-32"><a href="#cb30-32" aria-hidden="true"></a>  f <span class="op">!</span> attr <span class="ot">=</span> \f1 <span class="ot">-&gt;</span> <span class="dt">AddAttribute</span> attr <span class="op">$</span> f f1</span>
+<span id="cb30-33"><a href="#cb30-33" aria-hidden="true"></a></span>
+<span id="cb30-34"><a href="#cb30-34" aria-hidden="true"></a><span class="kw">class</span> <span class="dt">ToMarkup</span> a <span class="kw">where</span></span>
+<span id="cb30-35"><a href="#cb30-35" aria-hidden="true"></a><span class="ot">    toMarkup ::</span> a <span class="ot">-&gt;</span> <span class="dt">Markup</span></span>
+<span id="cb30-36"><a href="#cb30-36" aria-hidden="true"></a></span>
+<span id="cb30-37"><a href="#cb30-37" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">ToMarkup</span> <span class="dt">String</span> <span class="kw">where</span></span>
+<span id="cb30-38"><a href="#cb30-38" aria-hidden="true"></a>    toMarkup <span class="ot">=</span> string</span></code></pre></div>
+<p>Finally, if you remember, in our previous iteration, we abstracted away the creation of <code>HTML</code> elements into small helper functions. That move come in handy here, to construct concrete values for the new <code>Markup</code> type. You can observe that in the updates that we make to the helper functions as follows. This is the part that is made available to the client from the <code>blaze-html</code> library, whereas the code we saw above is abstracted away int <code>blaze-markup</code> library.</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true"></a>href value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;href=\&quot;&quot;</span> value</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true"></a>type_ value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;type=\&quot;&quot;</span> value</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true"></a></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true"></a>rel value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;rel=\&quot;&quot;</span> value</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true"></a></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true"></a><span class="fu">id</span> value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;id=\&quot;&quot;</span> value</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true"></a></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Html</span> <span class="ot">=</span> <span class="dt">MarkupM</span> ()</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true"></a></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true"></a><span class="ot">html ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true"></a>html <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;html&quot;</span> <span class="st">&quot;&lt;html&quot;</span> <span class="st">&quot;&lt;/head&gt;&quot;</span></span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true"></a></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true"></a><span class="fu">head</span><span class="ot"> ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true"></a><span class="fu">head</span> <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;head&quot;</span> <span class="st">&quot;&lt;head&quot;</span> <span class="st">&quot;&lt;/head&gt;&quot;</span></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true"></a></span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true"></a><span class="ot">title ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true"></a>title <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;title&quot;</span> <span class="st">&quot;&lt;title&quot;</span> <span class="st">&quot;&lt;/title&gt;&quot;</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true"></a></span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true"></a><span class="ot">link ::</span> <span class="dt">Html</span></span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true"></a>link <span class="ot">=</span> <span class="dt">Leaf</span> <span class="st">&quot;link&quot;</span> <span class="st">&quot;&lt;link&quot;</span> <span class="st">&quot;&gt;&quot;</span> ()</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true"></a></span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true"></a><span class="ot">body ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true"></a>body <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;body&quot;</span> <span class="st">&quot;&lt;body&quot;</span> <span class="st">&quot;&lt;/body&gt;&quot;</span></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true"></a></span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true"></a><span class="fu">div</span><span class="ot"> ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true"></a><span class="fu">div</span> <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;div&quot;</span> <span class="st">&quot;&lt;div&quot;</span> <span class="st">&quot;&lt;/div&gt;&quot;</span></span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true"></a></span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true"></a><span class="ot">p ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-29"><a href="#cb31-29" aria-hidden="true"></a>p <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;p&quot;</span> <span class="st">&quot;&lt;p&quot;</span> <span class="st">&quot;&lt;/p&gt;&quot;</span></span>
+<span id="cb31-30"><a href="#cb31-30" aria-hidden="true"></a></span>
+<span id="cb31-31"><a href="#cb31-31" aria-hidden="true"></a><span class="ot">ul ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-32"><a href="#cb31-32" aria-hidden="true"></a>ul <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;ul&quot;</span> <span class="st">&quot;&lt;ul&quot;</span> <span class="st">&quot;&lt;/ul&gt;&quot;</span></span>
+<span id="cb31-33"><a href="#cb31-33" aria-hidden="true"></a></span>
+<span id="cb31-34"><a href="#cb31-34" aria-hidden="true"></a><span class="ot">li ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-35"><a href="#cb31-35" aria-hidden="true"></a>li <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;li&quot;</span> <span class="st">&quot;&lt;li&quot;</span> <span class="st">&quot;&lt;/li&gt;&quot;</span></span>
+<span id="cb31-36"><a href="#cb31-36" aria-hidden="true"></a></span>
+<span id="cb31-37"><a href="#cb31-37" aria-hidden="true"></a><span class="ot">string ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb31-38"><a href="#cb31-38" aria-hidden="true"></a>string a <span class="ot">=</span> <span class="dt">Content</span> a ()</span></code></pre></div>
+<p>Note that we are constructing values from the <code>Markup</code> type and providing the ‘string’ rendered version of <code>Html</code> elements. This would mean we also update our <code>renderMarkup</code> version to support this version. This function is also available in the generic markup library!</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true"></a><span class="ot">renderString ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">MarkupM</span> a <span class="ot">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true"></a>renderString attrs (<span class="dt">Parent</span> tag open close content) <span class="ot">=</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true"></a>    open <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> (renderString <span class="st">&quot;&quot;</span> content) <span class="op">++</span> close</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true"></a>renderString attrs (<span class="dt">Leaf</span> _ begin end _) <span class="ot">=</span> begin <span class="op">++</span> attrs <span class="op">++</span> end</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true"></a>renderString attrs (<span class="dt">Content</span> x _) <span class="ot">=</span> x</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true"></a>renderString attrs (<span class="dt">Append</span> m1 m2) <span class="ot">=</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true"></a>  renderString attrs m1 <span class="op">++</span> renderString attrs m2</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true"></a>renderString attrs (<span class="dt">AddAttribute</span> (<span class="dt">Attribute</span> key value) m1) <span class="ot">=</span></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true"></a>    <span class="fu">flip</span> renderString m1 <span class="op">$</span></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true"></a>        <span class="st">&quot; &quot;</span> <span class="op">++</span> key <span class="op">++</span> value <span class="op">++</span> <span class="st">&quot;\&quot;&quot;</span> <span class="op">++</span> attrs</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true"></a>renderString attrs (<span class="dt">Empty</span> x) <span class="ot">=</span> <span class="st">&quot;&quot;</span></span></code></pre></div>
+<p>Finally, our version of <code>page1</code> from previous iteration will continue to work.</p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true"></a><span class="ot">page1 ::</span> <span class="dt">Html</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true"></a>page1 <span class="ot">=</span> html</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true"></a>  <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true"></a>    <span class="fu">head</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true"></a>        title <span class="st">&quot;Introduction page.&quot;</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true"></a>        link <span class="op">!</span> rel <span class="st">&quot;stylesheet&quot;</span> <span class="op">!</span> type_ <span class="st">&quot;text/css&quot;</span> <span class="op">!</span> href <span class="st">&quot;screen.css&quot;</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true"></a>    body <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true"></a>        <span class="fu">div</span> <span class="op">!</span> <span class="fu">id</span> <span class="st">&quot;header&quot;</span> <span class="op">$</span> <span class="st">&quot;Syntax&quot;</span></span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true"></a>        p <span class="st">&quot;This is an example of BlazeMarkup syntax.&quot;</span></span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true"></a>        ul <span class="op">$</span> <span class="fu">mapM_</span> (li <span class="op">.</span> toMarkup <span class="op">.</span> <span class="fu">show</span>) [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]</span></code></pre></div>
+<p>Here is the final version of the code that will support the original version of <code>page1</code> function. <a href="https://github.com/gdevanla/read-you-a-blaze/blob/master/app/fourth.hs">fourth.hs</a></p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true"></a><span class="ot">{-# LANGUAGE OverloadedStrings #-}</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true"></a><span class="ot">{-# LANGUAGE GADTs #-}</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true"></a><span class="ot">{-# LANGUAGE TypeSynonymInstances #-}</span> <span class="co">-- needed for ToMarkup String</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true"></a><span class="ot">{-# LANGUAGE FlexibleInstances    #-}</span></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true"></a></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true"></a><span class="co">--module Main1 where</span></span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Prelude</span> <span class="kw">hiding</span> (head, id, div)</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">GHC.Exts</span>  (<span class="dt">IsString</span> (..))</span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true"></a></span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Attribute</span> <span class="ot">=</span> <span class="dt">Attribute</span> <span class="dt">String</span> <span class="dt">String</span></span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>)</span>
+<span id="cb34-12"><a href="#cb34-12" aria-hidden="true"></a></span>
+<span id="cb34-13"><a href="#cb34-13" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Tag</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb34-14"><a href="#cb34-14" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Open</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb34-15"><a href="#cb34-15" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Close</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb34-16"><a href="#cb34-16" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Key</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb34-17"><a href="#cb34-17" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Value</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb34-18"><a href="#cb34-18" aria-hidden="true"></a></span>
+<span id="cb34-19"><a href="#cb34-19" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">MarkupM</span> a</span>
+<span id="cb34-20"><a href="#cb34-20" aria-hidden="true"></a>  <span class="ot">=</span> <span class="dt">Parent</span> <span class="dt">Tag</span> <span class="dt">Open</span> <span class="dt">Close</span> (<span class="dt">MarkupM</span> a)</span>
+<span id="cb34-21"><a href="#cb34-21" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Leaf</span> <span class="dt">Tag</span> <span class="dt">Open</span> <span class="dt">Close</span> a</span>
+<span id="cb34-22"><a href="#cb34-22" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Content</span> <span class="dt">String</span> a</span>
+<span id="cb34-23"><a href="#cb34-23" aria-hidden="true"></a>  <span class="op">|</span> <span class="kw">forall</span> b<span class="op">.</span> <span class="dt">Append</span> (<span class="dt">MarkupM</span> b) (<span class="dt">MarkupM</span> a)</span>
+<span id="cb34-24"><a href="#cb34-24" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">AddAttribute</span> <span class="dt">Attribute</span> (<span class="dt">MarkupM</span> a)</span>
+<span id="cb34-25"><a href="#cb34-25" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Empty</span> a</span>
+<span id="cb34-26"><a href="#cb34-26" aria-hidden="true"></a></span>
+<span id="cb34-27"><a href="#cb34-27" aria-hidden="true"></a></span>
+<span id="cb34-28"><a href="#cb34-28" aria-hidden="true"></a><span class="kw">instance</span> (a <span class="op">~</span> ()) <span class="ot">=&gt;</span> <span class="dt">IsString</span> (<span class="dt">MarkupM</span> a) <span class="kw">where</span></span>
+<span id="cb34-29"><a href="#cb34-29" aria-hidden="true"></a>  fromString x <span class="ot">=</span> <span class="dt">Content</span> (fromString x) <span class="fu">mempty</span></span>
+<span id="cb34-30"><a href="#cb34-30" aria-hidden="true"></a></span>
+<span id="cb34-31"><a href="#cb34-31" aria-hidden="true"></a><span class="ot">markupValue ::</span> <span class="dt">MarkupM</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb34-32"><a href="#cb34-32" aria-hidden="true"></a>markupValue (<span class="dt">Parent</span> _ _ _ x) <span class="ot">=</span> markupValue x</span>
+<span id="cb34-33"><a href="#cb34-33" aria-hidden="true"></a>markupValue (<span class="dt">Leaf</span> _ _ _ x) <span class="ot">=</span> x</span>
+<span id="cb34-34"><a href="#cb34-34" aria-hidden="true"></a>markupValue (<span class="dt">Content</span> _ x) <span class="ot">=</span> x</span>
+<span id="cb34-35"><a href="#cb34-35" aria-hidden="true"></a>markupValue (<span class="dt">Append</span> _ m1) <span class="ot">=</span> markupValue m1</span>
+<span id="cb34-36"><a href="#cb34-36" aria-hidden="true"></a>markupValue (<span class="dt">AddAttribute</span> _  m1) <span class="ot">=</span> markupValue m1</span>
+<span id="cb34-37"><a href="#cb34-37" aria-hidden="true"></a>markupValue (<span class="dt">Empty</span> x) <span class="ot">=</span> x</span>
+<span id="cb34-38"><a href="#cb34-38" aria-hidden="true"></a></span>
+<span id="cb34-39"><a href="#cb34-39" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Markup</span> <span class="ot">=</span> <span class="dt">MarkupM</span> ()</span>
+<span id="cb34-40"><a href="#cb34-40" aria-hidden="true"></a></span>
+<span id="cb34-41"><a href="#cb34-41" aria-hidden="true"></a><span class="co">-- Need to update type of Append with existential</span></span>
+<span id="cb34-42"><a href="#cb34-42" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">MarkupM</span> <span class="kw">where</span></span>
+<span id="cb34-43"><a href="#cb34-43" aria-hidden="true"></a>  <span class="fu">fmap</span> f x <span class="ot">=</span> <span class="dt">Append</span> x (<span class="dt">Empty</span> (f (markupValue x)))</span>
+<span id="cb34-44"><a href="#cb34-44" aria-hidden="true"></a></span>
+<span id="cb34-45"><a href="#cb34-45" aria-hidden="true"></a><span class="co">-- Why isn't this just an `(Empty (htmlValue x (htmlValue y)))`</span></span>
+<span id="cb34-46"><a href="#cb34-46" aria-hidden="true"></a><span class="co">-- The `homomorphism` law is not followed here.</span></span>
+<span id="cb34-47"><a href="#cb34-47" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Applicative</span> <span class="dt">MarkupM</span> <span class="kw">where</span></span>
+<span id="cb34-48"><a href="#cb34-48" aria-hidden="true"></a>  <span class="fu">pure</span> x <span class="ot">=</span> <span class="dt">Empty</span> x</span>
+<span id="cb34-49"><a href="#cb34-49" aria-hidden="true"></a></span>
+<span id="cb34-50"><a href="#cb34-50" aria-hidden="true"></a>  <span class="co">-- Why are we not discarding the first value?</span></span>
+<span id="cb34-51"><a href="#cb34-51" aria-hidden="true"></a>  (<span class="op">*&gt;</span>) <span class="ot">=</span> <span class="dt">Append</span></span>
+<span id="cb34-52"><a href="#cb34-52" aria-hidden="true"></a>  (<span class="op">&lt;*&gt;</span>) x y <span class="ot">=</span> <span class="co">--Empty (htmlValue x (htmlValue y))</span></span>
+<span id="cb34-53"><a href="#cb34-53" aria-hidden="true"></a>    <span class="dt">Append</span> (<span class="dt">Append</span> x y) (<span class="dt">Empty</span> (markupValue x (markupValue y)))</span>
+<span id="cb34-54"><a href="#cb34-54" aria-hidden="true"></a></span>
+<span id="cb34-55"><a href="#cb34-55" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">MarkupM</span> <span class="kw">where</span></span>
+<span id="cb34-56"><a href="#cb34-56" aria-hidden="true"></a>  <span class="fu">return</span> <span class="ot">=</span> <span class="fu">pure</span></span>
+<span id="cb34-57"><a href="#cb34-57" aria-hidden="true"></a></span>
+<span id="cb34-58"><a href="#cb34-58" aria-hidden="true"></a>  m <span class="op">&gt;&gt;=</span> f <span class="ot">=</span> <span class="dt">Append</span> m (f (markupValue m))</span>
+<span id="cb34-59"><a href="#cb34-59" aria-hidden="true"></a>  (<span class="op">&gt;&gt;</span>) <span class="ot">=</span> <span class="dt">Append</span></span>
+<span id="cb34-60"><a href="#cb34-60" aria-hidden="true"></a></span>
+<span id="cb34-61"><a href="#cb34-61" aria-hidden="true"></a></span>
+<span id="cb34-62"><a href="#cb34-62" aria-hidden="true"></a><span class="ot">renderString ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">MarkupM</span> a <span class="ot">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb34-63"><a href="#cb34-63" aria-hidden="true"></a>renderString attrs (<span class="dt">Parent</span> tag open close content) <span class="ot">=</span></span>
+<span id="cb34-64"><a href="#cb34-64" aria-hidden="true"></a>    open <span class="op">++</span> attrs <span class="op">++</span> <span class="st">&quot;&gt;&quot;</span> <span class="op">++</span> (renderString <span class="st">&quot;&quot;</span> content) <span class="op">++</span> close</span>
+<span id="cb34-65"><a href="#cb34-65" aria-hidden="true"></a>renderString attrs (<span class="dt">Leaf</span> _ begin end _) <span class="ot">=</span> begin <span class="op">++</span> attrs <span class="op">++</span> end</span>
+<span id="cb34-66"><a href="#cb34-66" aria-hidden="true"></a>renderString attrs (<span class="dt">Content</span> x _) <span class="ot">=</span> x</span>
+<span id="cb34-67"><a href="#cb34-67" aria-hidden="true"></a>renderString attrs (<span class="dt">Append</span> m1 m2) <span class="ot">=</span></span>
+<span id="cb34-68"><a href="#cb34-68" aria-hidden="true"></a>  renderString attrs m1 <span class="op">++</span> renderString attrs m2</span>
+<span id="cb34-69"><a href="#cb34-69" aria-hidden="true"></a>renderString attrs (<span class="dt">AddAttribute</span> (<span class="dt">Attribute</span> key value) m1) <span class="ot">=</span></span>
+<span id="cb34-70"><a href="#cb34-70" aria-hidden="true"></a>    <span class="fu">flip</span> renderString m1 <span class="op">$</span></span>
+<span id="cb34-71"><a href="#cb34-71" aria-hidden="true"></a>        <span class="st">&quot; &quot;</span> <span class="op">++</span> key <span class="op">++</span> value <span class="op">++</span> <span class="st">&quot;\&quot;&quot;</span> <span class="op">++</span> attrs</span>
+<span id="cb34-72"><a href="#cb34-72" aria-hidden="true"></a>renderString attrs (<span class="dt">Empty</span> x) <span class="ot">=</span> <span class="st">&quot;&quot;</span></span>
+<span id="cb34-73"><a href="#cb34-73" aria-hidden="true"></a></span>
+<span id="cb34-74"><a href="#cb34-74" aria-hidden="true"></a></span>
+<span id="cb34-75"><a href="#cb34-75" aria-hidden="true"></a>href value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;href=\&quot;&quot;</span> value</span>
+<span id="cb34-76"><a href="#cb34-76" aria-hidden="true"></a>type_ value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;type=\&quot;&quot;</span> value</span>
+<span id="cb34-77"><a href="#cb34-77" aria-hidden="true"></a></span>
+<span id="cb34-78"><a href="#cb34-78" aria-hidden="true"></a>rel value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;rel=\&quot;&quot;</span> value</span>
+<span id="cb34-79"><a href="#cb34-79" aria-hidden="true"></a></span>
+<span id="cb34-80"><a href="#cb34-80" aria-hidden="true"></a><span class="fu">id</span> value <span class="ot">=</span> <span class="dt">Attribute</span> <span class="st">&quot;id=\&quot;&quot;</span> value</span>
+<span id="cb34-81"><a href="#cb34-81" aria-hidden="true"></a></span>
+<span id="cb34-82"><a href="#cb34-82" aria-hidden="true"></a><span class="kw">class</span> <span class="dt">Attributable</span> h <span class="kw">where</span></span>
+<span id="cb34-83"><a href="#cb34-83" aria-hidden="true"></a><span class="ot">    (!) ::</span> h <span class="ot">-&gt;</span> <span class="dt">Attribute</span> <span class="ot">-&gt;</span> h</span>
+<span id="cb34-84"><a href="#cb34-84" aria-hidden="true"></a></span>
+<span id="cb34-85"><a href="#cb34-85" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Attributable</span> <span class="dt">Markup</span> <span class="kw">where</span></span>
+<span id="cb34-86"><a href="#cb34-86" aria-hidden="true"></a>  (<span class="op">!</span>) html attr <span class="ot">=</span> <span class="dt">AddAttribute</span> attr html</span>
+<span id="cb34-87"><a href="#cb34-87" aria-hidden="true"></a></span>
+<span id="cb34-88"><a href="#cb34-88" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Attributable</span> (<span class="dt">Markup</span> <span class="ot">-&gt;</span> <span class="dt">Markup</span>) <span class="kw">where</span></span>
+<span id="cb34-89"><a href="#cb34-89" aria-hidden="true"></a>  f <span class="op">!</span> attr <span class="ot">=</span> \f1 <span class="ot">-&gt;</span> <span class="dt">AddAttribute</span> attr <span class="op">$</span> f f1</span>
+<span id="cb34-90"><a href="#cb34-90" aria-hidden="true"></a>  <span class="co">--f ! attr = AddAttribute attr $ f</span></span>
+<span id="cb34-91"><a href="#cb34-91" aria-hidden="true"></a></span>
+<span id="cb34-92"><a href="#cb34-92" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Html</span> <span class="ot">=</span> <span class="dt">MarkupM</span> ()</span>
+<span id="cb34-93"><a href="#cb34-93" aria-hidden="true"></a></span>
+<span id="cb34-94"><a href="#cb34-94" aria-hidden="true"></a><span class="ot">html ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-95"><a href="#cb34-95" aria-hidden="true"></a>html <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;html&quot;</span> <span class="st">&quot;&lt;html&quot;</span> <span class="st">&quot;&lt;/head&gt;&quot;</span></span>
+<span id="cb34-96"><a href="#cb34-96" aria-hidden="true"></a></span>
+<span id="cb34-97"><a href="#cb34-97" aria-hidden="true"></a><span class="fu">head</span><span class="ot"> ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-98"><a href="#cb34-98" aria-hidden="true"></a><span class="fu">head</span> <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;head&quot;</span> <span class="st">&quot;&lt;head&quot;</span> <span class="st">&quot;&lt;/head&gt;&quot;</span></span>
+<span id="cb34-99"><a href="#cb34-99" aria-hidden="true"></a></span>
+<span id="cb34-100"><a href="#cb34-100" aria-hidden="true"></a><span class="ot">title ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-101"><a href="#cb34-101" aria-hidden="true"></a>title <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;title&quot;</span> <span class="st">&quot;&lt;title&quot;</span> <span class="st">&quot;&lt;/title&gt;&quot;</span></span>
+<span id="cb34-102"><a href="#cb34-102" aria-hidden="true"></a></span>
+<span id="cb34-103"><a href="#cb34-103" aria-hidden="true"></a><span class="ot">link ::</span> <span class="dt">Html</span></span>
+<span id="cb34-104"><a href="#cb34-104" aria-hidden="true"></a>link <span class="ot">=</span> <span class="dt">Leaf</span> <span class="st">&quot;link&quot;</span> <span class="st">&quot;&lt;link&quot;</span> <span class="st">&quot;&gt;&quot;</span> ()</span>
+<span id="cb34-105"><a href="#cb34-105" aria-hidden="true"></a></span>
+<span id="cb34-106"><a href="#cb34-106" aria-hidden="true"></a><span class="ot">body ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-107"><a href="#cb34-107" aria-hidden="true"></a>body <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;body&quot;</span> <span class="st">&quot;&lt;body&quot;</span> <span class="st">&quot;&lt;/body&gt;&quot;</span></span>
+<span id="cb34-108"><a href="#cb34-108" aria-hidden="true"></a></span>
+<span id="cb34-109"><a href="#cb34-109" aria-hidden="true"></a><span class="fu">div</span><span class="ot"> ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-110"><a href="#cb34-110" aria-hidden="true"></a><span class="fu">div</span> <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;div&quot;</span> <span class="st">&quot;&lt;div&quot;</span> <span class="st">&quot;&lt;/div&gt;&quot;</span></span>
+<span id="cb34-111"><a href="#cb34-111" aria-hidden="true"></a></span>
+<span id="cb34-112"><a href="#cb34-112" aria-hidden="true"></a><span class="ot">p ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-113"><a href="#cb34-113" aria-hidden="true"></a>p <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;p&quot;</span> <span class="st">&quot;&lt;p&quot;</span> <span class="st">&quot;&lt;/p&gt;&quot;</span></span>
+<span id="cb34-114"><a href="#cb34-114" aria-hidden="true"></a></span>
+<span id="cb34-115"><a href="#cb34-115" aria-hidden="true"></a><span class="ot">ul ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-116"><a href="#cb34-116" aria-hidden="true"></a>ul <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;ul&quot;</span> <span class="st">&quot;&lt;ul&quot;</span> <span class="st">&quot;&lt;/ul&gt;&quot;</span></span>
+<span id="cb34-117"><a href="#cb34-117" aria-hidden="true"></a></span>
+<span id="cb34-118"><a href="#cb34-118" aria-hidden="true"></a><span class="ot">li ::</span> <span class="dt">Html</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-119"><a href="#cb34-119" aria-hidden="true"></a>li <span class="ot">=</span> <span class="dt">Parent</span> <span class="st">&quot;li&quot;</span> <span class="st">&quot;&lt;li&quot;</span> <span class="st">&quot;&lt;/li&gt;&quot;</span></span>
+<span id="cb34-120"><a href="#cb34-120" aria-hidden="true"></a></span>
+<span id="cb34-121"><a href="#cb34-121" aria-hidden="true"></a><span class="ot">string ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Html</span></span>
+<span id="cb34-122"><a href="#cb34-122" aria-hidden="true"></a>string a <span class="ot">=</span> <span class="dt">Content</span> a ()</span>
+<span id="cb34-123"><a href="#cb34-123" aria-hidden="true"></a></span>
+<span id="cb34-124"><a href="#cb34-124" aria-hidden="true"></a><span class="kw">class</span> <span class="dt">ToMarkup</span> a <span class="kw">where</span></span>
+<span id="cb34-125"><a href="#cb34-125" aria-hidden="true"></a><span class="ot">    toMarkup ::</span> a <span class="ot">-&gt;</span> <span class="dt">Markup</span></span>
+<span id="cb34-126"><a href="#cb34-126" aria-hidden="true"></a></span>
+<span id="cb34-127"><a href="#cb34-127" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">ToMarkup</span> <span class="dt">String</span> <span class="kw">where</span></span>
+<span id="cb34-128"><a href="#cb34-128" aria-hidden="true"></a>    toMarkup <span class="ot">=</span> string</span>
+<span id="cb34-129"><a href="#cb34-129" aria-hidden="true"></a>    <span class="co">-- Implement escaping</span></span>
+<span id="cb34-130"><a href="#cb34-130" aria-hidden="true"></a>    <span class="co">--preEscapedToMarkup = preEscapedString</span></span>
+<span id="cb34-131"><a href="#cb34-131" aria-hidden="true"></a></span>
+<span id="cb34-132"><a href="#cb34-132" aria-hidden="true"></a><span class="ot">page1 ::</span> <span class="dt">Html</span></span>
+<span id="cb34-133"><a href="#cb34-133" aria-hidden="true"></a>page1 <span class="ot">=</span> html</span>
+<span id="cb34-134"><a href="#cb34-134" aria-hidden="true"></a>  <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb34-135"><a href="#cb34-135" aria-hidden="true"></a>    <span class="fu">head</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb34-136"><a href="#cb34-136" aria-hidden="true"></a>        title <span class="st">&quot;Introduction page.&quot;</span></span>
+<span id="cb34-137"><a href="#cb34-137" aria-hidden="true"></a>        link <span class="op">!</span> rel <span class="st">&quot;stylesheet&quot;</span> <span class="op">!</span> type_ <span class="st">&quot;text/css&quot;</span> <span class="op">!</span> href <span class="st">&quot;screen.css&quot;</span></span>
+<span id="cb34-138"><a href="#cb34-138" aria-hidden="true"></a>    body <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb34-139"><a href="#cb34-139" aria-hidden="true"></a>        <span class="fu">div</span> <span class="op">!</span> <span class="fu">id</span> <span class="st">&quot;header&quot;</span> <span class="op">$</span> <span class="st">&quot;Syntax&quot;</span></span>
+<span id="cb34-140"><a href="#cb34-140" aria-hidden="true"></a>        p <span class="st">&quot;This is an example of BlazeMarkup syntax.&quot;</span></span>
+<span id="cb34-141"><a href="#cb34-141" aria-hidden="true"></a>        ul <span class="op">$</span> <span class="fu">mapM_</span> (li <span class="op">.</span> toMarkup <span class="op">.</span> <span class="fu">show</span>) [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]</span>
+<span id="cb34-142"><a href="#cb34-142" aria-hidden="true"></a></span>
+<span id="cb34-143"><a href="#cb34-143" aria-hidden="true"></a><span class="ot">main ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb34-144"><a href="#cb34-144" aria-hidden="true"></a>main <span class="ot">=</span> <span class="fu">putStrLn</span> <span class="op">$</span> renderString <span class="st">&quot;&quot;</span> page1</span></code></pre></div>
+<h3 id="conclusion">Conclusion</h3>
+<p>If you have stayed with me so far, Congrats! We just implemented a simple version of EDSL which allows clients to build <code>HTML</code> contents using Haskell syntax. In the process we learned how to define the abstract data types that defined the EDSL and also provide a friendly <code>monadic</code> interfaces. In this process, we also identified the parts of code that are currently available as part of the two libraries, namely, <code>blaze-markup</code> and <code>blaze-html</code>.</p>
+<p>There are other important pieces in the <code>blaze-html</code> and <code>blaze-markup</code> libraries that this article does not touch upon. That is using efficient <code>String</code> types by way of a <code>ChoiceString</code> data type. But, that information and other missed pieces of the implementations should be easy to understand by reading the source code of these libraries.</p>
+<p>Hopefully, the insights you gained building this toy example, will help you read and understand the internals of these 2 libraries easily. This should also help you build a good foundation based on which you would be able to create your own EDSL’s. Happy Haskell hacking!</p>
+<p>See you in the next ‘Read Your A _ Series’™.</p>
+<hr />
+<h4 id="references">References</h4>
+<p><a href="http://hackage.haskell.org/package/blaze-markup-0.8.2.1">blaze-markup</a></p>
+<p><a href="https://hackage.haskell.org/package/blaze-html">blaze-html</a></p>
+<hr />
+<h3 id="other-read-you-a-_-series">Other ‘Read You A _ Series’™</h3>
+<p><a href="http://devanla.com/pages/lys.html">Read You A Scotty</a></p>
     </section>
   </article>
 </section>
