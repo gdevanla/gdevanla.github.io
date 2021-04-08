@@ -97,45 +97,46 @@
 </ol>
 <p><a name="objective"></a></p>
 <h2 id="objective">Objective</h2>
-<p>The main goal of this tutorial is to build a lexer for Python 3.9 language specification as described <a href="https://docs.python.org/3/reference/lexical_analysis.html">here</a>. By working through this tutorial we will be replicating the complete behavior of the tokenizer implemented in <a href="https://github.com/python/cpython/blob/3.9/Lib/tokenize.py">Lib/tokenizer.py</a> and described <a href="https://docs.python.org/3/library/tokenize.html">here</a>. The final implementation of this tutorial has around 80+ tests that were directly extracted using the tests fixtures and results used in <a href="https://github.com/python/cpython/blob/3.9/Lib/test/test_tokenize.py">test/test_tokenize.py</a></p>
-<p>By working towards this goal, the reader should acquire enough familiarity to implement a real world lexer for a serious language using the <code>Alex</code>.</p>
+<p>The main goal of this tutorial is to build a lexer for Python 3 (tested on 3.9) language specification as described <a href="https://docs.python.org/3/reference/lexical_analysis.html">here</a>. By working through this tutorial we will be replicating the complete behavior of the tokenizer implemented in <a href="https://github.com/python/cpython/blob/3.9/Lib/tokenize.py">Lib/tokenizer.py</a> and described <a href="https://docs.python.org/3/library/tokenize.html">here</a>. The final implementation of this tutorial has around 80+ tests that were directly extracted using the tests fixtures and results used in <a href="https://github.com/python/cpython/blob/3.9/Lib/test/test_tokenize.py">test/test_tokenize.py</a></p>
+<p>By working towards this goal, the reader should acquire enough familiarity to implement a real world lexer for a serious language using <code>Alex</code>.</p>
 <h4 id="the-objectives-of-this-tutorial-are-as-follows">The objectives of this tutorial are as follows:</h4>
 <ul>
 <li>Build an real world project using Alex (here we build a Lexer for Python 3.9)</li>
-<li>Learn the different features of Alex as we incrementatlly build the Lexer (macros, set expressions, rules, actions etc)</li>
+<li>Learn the different features of Alex as we incrementatlly build the Lexer (macros, set expressions, rules, actions, error handling, threading state)</li>
 <li>Motivate and use approaches that are required to implement a complete Lexer (context-sensitive lexer with State)</li>
 </ul>
 <h4 id="what-this-article-is-not">What this article is not</h4>
 <ul>
 <li>This article is not a replacement of more precise documenation on Alex. But, you would greatly benefit from this article if you were to refer to the documentation as you work through the examples.</li>
-<li>Does not teach you about <code>lexers</code> and its theory. Some basic understanding of how lexer works is expected, but reading through the example should also provide sufficient guidance.</li>
+<li>Does not teach you about <code>lexers</code> and its theory. Some basic understanding of how lexer works is expected, but reading through the example should also provide sufficient guidance on how the framework guides you in building the lexer without understand much theory.</li>
 </ul>
 <h4 id="who-is-this-book-for">Who is this book for</h4>
 <p>If you are interested in implementing a real world lexer and use it in your projects, then working through the example in this book should give you enough knowledge and familiarity.</p>
 <ul>
-<li>The article assumes basic knowledge with Haskell. The later examples in the book uses State monads and that is as complicated as we will get.</li>
+<li>The article assumes beginner knowledge with Haskell. The later examples in the book uses State monads and that is as advanced as it gets.</li>
 <li>Someone who is familiar with lexer atleast at the very basic level</li>
-<li>Familiarity with Regular Expressions is assumed</li>
+<li>Familiarity with Regular Expressions is assumed (we use them a lot in this tutorial!)</li>
 <li>Familiarity with Python 3.0 language syntax is assumed</li>
 </ul>
 <p><a name="how-org"></a></p>
 <h4 id="how-the-tutorial-is-organized">1.1 How the tutorial is organized</h4>
 <h5 id="preparation">Preparation</h5>
-<p>We build the basic plumbing we need in terms of project creation, adding a boiler plate code that the Alex lexer needs.</p>
+<p>We build the basic plumbing we need in terms of project creation, adding required boiler plate code that <code>Alex</code> needs to generate the lexer.</p>
 <h5 id="basic-lexer">Basic Lexer</h5>
-<p>We build a basix lexer that supports Identifiers, Numerals and some math operators (+,-,*,/). We use this iteration to also provide some functions Alex expects us to implement extending what we built in the Preparation section. <a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>.</p>
+<p>We build a basic lexer that supports <code>identifiers</code> and <code>integers</code>. We use this iteration to also provide the functions Alex expects us to implement extending what we built in the Preparation section. <a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>.</p>
 <h4 id="support-numeric-values-and-string-values">Support Numeric Values And String Values</h4>
-<p>We will use the <code>regular expression</code> and <code>macro</code> features provided by Alex to support decimals and various floating point representations. Examples of support include values like <code>42</code>, <code>42e10</code>, <code>0.42e-10</code> etc.</p>
-<p>Since we are building a lexer for the Python 3 version of the language, we have an interesting tasks for supporting a wide range of string representations. The variety of string representation supported by Python is available <a href="https://docs.python.org/3/reference/lexical_analysis.html#literals">here</a>. Our lexer will support all these representation at the end of this section</p>
+<p>We will use the <code>character set</code> and <code>macro</code> features provided by Alex to support decimals and different floating point representations. Examples of support include values like <code>42</code>, <code>42e10</code>, <code>0.42e-10</code> etc.</p>
+<p>Since we are building a lexer for the Python 3 version of the language, we have an interesting tasks for supporting a wide range of string representations. The variety of string representation supported by Python is available <a href="https://docs.python.org/3/reference/lexical_analysis.html#literals">here</a>. Our lexer should support all these representation at the end of this section.</p>
 <h4 id="capture-the-source-location">Capture the Source Location</h4>
-<p>By now you would have noticed that we have not captures the Token positions. In this iteration we will handle that and capture the exact starting and ending positions of each Token we generate. While working on this we will try to stay true to how the Python tokenizer works.</p>
-<h4 id="store-the-state-in-a-state-monad">Store the State in a State Monad</h4>
-<p>Python language is white-space sensitive. Until, this iteration we did not have to deal with it. But, before we add support for that we will have to build the machinery to capture the context of the state the lexer is in when encounter newlines, empty lines, comments and whitespaces(representing indentations)</p>
-<h4 id="support-whitespace-context-and-a-full-lexer">Support Whitespace Context (and a Full Lexer!)</h4>
+<p>By now you would have noticed that we have not captured the <code>Token</code> positions as they appear in the source code. In this iteration we will handle that and capture the exact starting and ending positions of each Token we generate. While working on this we will try to stay true to how the Python tokenizer works in terms of determing which offsets to store.</p>
+<h4 id="store-the-lexer-state-in-a-state-monad">Store the Lexer State in a <code>State Monad</code></h4>
+<p>Python language is white-space sensitive. Until, this iteration we did not have to deal with it. We will have to build the support for this soon. Before we add support for white-space sensitivity, we will have to build the machinery to capture the context of the state the lexer is in. We captures information on whether we encountered newlines, empty lines, comments and whitespaces(representing indentations).</p>
+<h4 id="support-whitespace-context-and-a-complete-lexer">Support Whitespace Context (and a Complete Lexer!)</h4>
 <p>We start adding our initial support for white space sensitivity by adding INDENT and DEDENT tokens. Then we handle the complexity involved with newlines when mixed with comments and parens.</p>
 <p>By the end of this section we will have a fully functioning lexer which is (almost) true (upto the tests) replica of the Python implementation of the tokenizer.</p>
 <h4 id="a-word-on-the-code-used-in-this-tutorial">A word on the Code used in this tutorial</h4>
 <p>The tutorial uses code that is published at <a href="https://github.com/gdevanla/write-you-a-python-lexer">write-you-a-lexer</a>. There are 5 Example folder under the <code>src</code> folder. Each <code>Example</code> folder can be run independently as show in the section below.</p>
+<p>Each incremental iteration of our Lexer is implemented as a <code>Example</code> folder.</p>
 <p>Each of the <code>Example</code> folder also has corresponding tests <code>test_tokenizer*.hs</code>. Each of these tests refer to <code>test_fixtures</code> insides <code>test_fixtures</code> folder. Using the files in the <code>test_fixtures</code> folder tests are generated for each of the implementation in the lexer across all <code>Examples*</code> folder. The test_fixtures folders are numbered to match the <code>Example</code> number. For example, all test_fixtures for lexer implemented under <code>Example4</code> folder can be run using <code>test_tokenizer4.hs</code> which in turn uses the <code>test_fixtures/4/*.txt</code> files as the test fixtures.</p>
 <p><a name="preparation"></a></p>
 <h2 id="preparation-example1">2. Preparation <a href="https://github.com/gdevanla/write-you-a-python-lexer/tree/main/src/Example1">(Example1)</a></h2>
@@ -146,7 +147,7 @@
 <h4 id="chanages-to-package.yaml">Chanages to package.yaml</h4>
 <p>You can refer to the <a href="https://github.com/gdevanla/write-you-a-python-lexer/blob/main/package.yaml"><code>package.yaml</code></a>. An important note to note in this file, is that we add a <code>cabal</code> directive as follow:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="fu">build-tools</span><span class="kw">:</span><span class="at"> alex</span></span></code></pre></div>
-<p>This directive allows cabal to execute <code>alex</code> on any files with <code>.x</code> extensions. Running, <code>alex</code> on this file makes all <code>*.x</code> modules available to the project. More information on this directive can be found in the documentation for <code>cabal</code>.</p>
+<p>This directive allows cabal to execute <code>alex</code> on any file with <code>.x</code> extension. Running, <code>alex</code> on this file makes all <code>*.x</code> modules available to the project. More information on this directive can be found in the documentation for <code>cabal</code>.</p>
 <p><a name="type_and_function"></a></p>
 <h4 id="types-and-functions-required-by-alex">2.1 Types and Functions required by Alex</h4>
 <p>For the initial setup, we will add the following <code>type</code> and <code>functions</code> required by <code>Alex</code>. We will refine these <code>types</code> and <code>functions</code> in future iterations. For now, we will add the following defintions to <a href="https://github.com/gdevanla/write-you-a-python-lexer/blob/main/src/Example1/LexerUtil.hs"><code>src/Example1/LexerUtil.hs</code></a>. More detailed information about why need these functions and types can be found in the alex <a href="https://www.haskell.org/alex/doc/html/basic-api.html">documentation</a>. We will also get familiar with these types and functions as we work through this tutorial.</p>
@@ -191,15 +192,15 @@
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a>    {</span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>      token_type <span class="ot">=</span> tok,</span>
 <span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>      token_string<span class="ot">=</span>T.pack (<span class="fu">take</span> inp_len s),</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>      start_pos<span class="ot">=</span>(<span class="dv">0</span>, <span class="dv">0</span>),</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>      end_pos<span class="ot">=</span>(<span class="dv">0</span>, <span class="dv">0</span>)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>      start_pos<span class="ot">=</span>(<span class="dv">0</span>, <span class="dv">0</span>),  <span class="co">--- this will be set in correct values later</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>      end_pos<span class="ot">=</span>(<span class="dv">0</span>, <span class="dv">0</span>)     <span class="co">--- this will be set in correct values later</span></span>
 <span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a>    }</span></code></pre></div>
 <p>Now, we are ready to define our first version of Lexer rules. That will be our task in the first iteration.</p>
 <p><a name="first"></a></p>
 <h2 id="basic-lexer-example1">3. Basic Lexer <a href="https://github.com/gdevanla/write-you-a-python-lexer/tree/main/src/Example1">(Example1)</a></h2>
-<p>In this iteration, we will define a basic set of rules that captures any valid (non-unicode) identifiers in Python and also capture decimal values, including whitespace and newlines. We will skip the new lines in this iteration.</p>
-<p>Alex provides two building blocks to define rules. The basic block is to define a <code>character set</code> rules to match on. These identifiers for these rules are preceded by <code>$</code> symbol. This <code>set</code> rules can be combinted together and defined as <code>macros</code>. The identifiers of these macros are prefixed with <code>@</code> symbol. In our initial set of rules, we will use examples of both these structures.</p>
-<p>The entire file can be found <a href="https://github.com/gdevanla/write-you-a-python-lexer/blob/main/src/Example1/Lexer.x">here</a></p>
+<p>In this iteration, we will define a basic set of rules that captures any valid (non-unicode) identifiers in Python and also capture decimal values. We will skip the new lines and white spaces in this iteration.</p>
+<p>Alex provides two building blocks to define rules. One construct is to define a <code>character set</code> rule to match the text on. The identifiers for a <code>charactset set</code>is preceded by <code>$</code> symbol. This <code>character set</code> rules can be combined together and defined as <code>macros</code>. The identifiers defining macros are prefixed with <code>@</code> symbol. Now let’s use these 2 basic constructs to define our first set of lexer rules.</p>
+<p>The entire file is <a href="https://github.com/gdevanla/write-you-a-python-lexer/blob/main/src/Example1/Lexer.x">here</a></p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="co">--- (Example1.Lexer.x)</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a><span class="co">--- the character set rules</span></span>
@@ -256,7 +257,7 @@
 <span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Number</span>, token_string <span class="ot">=</span> <span class="st">&quot;42&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;variable&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)}]</span>
 <span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">TokenInfo</span>]</span>
 <span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span></span></code></pre></div>
-<p>Here is some ascii art that describes the control flow</p>
+<p>Here is a simplified picture that describes the control flow</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a><span class="ex">runLexer</span></span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a>  <span class="kw">|</span></span>
@@ -692,7 +693,7 @@
 <span id="cb39-25"><a href="#cb39-25" aria-hidden="true"></a>       <span class="co">-- this has new updated input</span></span>
 <span id="cb39-26"><a href="#cb39-26" aria-hidden="true"></a>       n_inp<span class="op">@</span>(<span class="dt">AlexPosn</span> _ nline ncol,c, rest,s) <span class="ot">&lt;-</span> alexGetInput</span>
 <span id="cb39-27"><a href="#cb39-27" aria-hidden="true"></a>       <span class="fu">return</span> <span class="op">$</span> constructToken tok inp inp_len n_inp</span></code></pre></div>
-<p>With these changes, we have completed abstracted away <code>AlexInput</code> and <code>AlexPosn</code> into the State monad, add used a custom user state which will will use soon, and also update the <code>lexer</code> to thread the state monad through the <code>alexScan</code> function until we see the <code>EOF</code> token.</p>
+<p>With these changes, we have completely abstracted away <code>AlexInput</code> and <code>AlexPosn</code> into the State monad. We added a custom user state which we will use soon. We also threaded the state through the <code>alexScan</code> function until we see the <code>EOF</code> token.</p>
 <p>Let’s now test our changes in GHCI.</p>
 <div class="sourceCode" id="cb40"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span><span class="kw">import</span> <span class="dt">Example4.LexerRunner</span> <span class="kw">as</span> <span class="dt">L4</span></span>
 <span id="cb40-2"><a href="#cb40-2" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>L4.runLexer <span class="st">&quot;a=b+c&quot;</span></span>
@@ -848,7 +849,7 @@
 <span id="cb45-18"><a href="#cb45-18" aria-hidden="true"></a>            alexSetPrevToken newline_tok</span>
 <span id="cb45-19"><a href="#cb45-19" aria-hidden="true"></a>            <span class="fu">return</span> (constructToken newline_tok inp inp_len n_inp)    <span class="co">-- no INDENTS on comment only new line                                                                                                          | otherwise -&gt; ... -- rest of code as above</span></span></code></pre></div>
 <p>For the above code additions to work we also need to track the <code>commentToken</code> and <code>paren</code> action that is explained further down.</p>
-<p>We will using helper function <code>newLineAction</code> to decide whether to generate <code>NL</code> or <code>NEWLINE</code> token depending on the flag set regarding comments. The <code>userStatePrevComment</code> flag is set in the <code>commentAction</code> function whenever a <code>comment</code> is found on a new line (and followed by just whitespaces).</p>
+<p>We will be using a helper function <code>newLineAction</code> to decide whether to generate <code>NL</code> or <code>NEWLINE</code> token depending on the flag set regarding comments. The <code>userStatePrevComment</code> flag is set in the <code>commentAction</code> function whenever a <code>comment</code> is found on a new line (and followed by just whitespaces).</p>
 <p><a name="comment_newline"></a></p>
 <h4 id="special-handling-for-comments">7.4 Special handling for Comments</h4>
 <div class="sourceCode" id="cb46"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true"></a><span class="co">-- Example5/LexerUtil.hs</span></span>
@@ -885,7 +886,7 @@
 <span id="cb47-24"><a href="#cb47-24" aria-hidden="true"></a>    start_pos<span class="ot">=</span>start_pos,</span>
 <span id="cb47-25"><a href="#cb47-25" aria-hidden="true"></a>    end_pos<span class="ot">=</span>end_pos,</span>
 <span id="cb47-26"><a href="#cb47-26" aria-hidden="true"></a>    }</span></code></pre></div>
-<p>Here is the subtelity, we are trying to handle for <code>#comments</code> that are present by themselves, as opposed to comments beside some statements.</p>
+<p>Here is the subtelity we are trying to handle for <code>#comments</code> that are present by themselves, as opposed to comments beside some statements.</p>
 <div class="sourceCode" id="cb48"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true"></a>In [<span class="dv">59</span>]: <span class="im">import</span> tokenize</span>
 <span id="cb48-2"><a href="#cb48-2" aria-hidden="true"></a>    ...:</span>
 <span id="cb48-3"><a href="#cb48-3" aria-hidden="true"></a>    ...: z <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
@@ -974,6 +975,12 @@
 <h2 id="thats-a-wrap">8. That’s a Wrap!</h2>
 <p>Phew, if you got this far, then Congratulations! You built a complete lexer in Haskell using Alex. The lexer you built atleast matches the behavior of the Python tokenizer upto the 80+ tests we ran against our lexer<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>. That is a awesome feat! For some of us, this is a college level project but for other’s this is quite an accomplishment!</p>
 <p>For further reading, I would recommend taking a look at the Alex documentation. A lof of what is explained in the document must make sense if you got this far in the tutorial. I have also left a bunch of references that I used while I implemented this project. There are other lexers in the wild that has been built using Alex. Hopefully, this tutorial has given you the knowledge you need to understand those implementations.</p>
+<h4 id="limitations-of-the-parser-we-built">Limitations of the parser we built</h4>
+<ol type="1">
+<li>We do support Unicode characters in identifiers</li>
+<li>’' as line continuation character is not supported in our implementation. That can be easily added.</li>
+<li>We don’t generate the <code>ENCODE</code> and <code>ENDMARKER</code> tokens. The code is commented out to make it easy for tests.</li>
+</ol>
 <p><a name="references"></a></p>
 <h4 id="references">9. References</h4>
 <ol type="1">
