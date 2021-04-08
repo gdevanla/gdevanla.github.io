@@ -977,8 +977,8 @@
 <p>For further reading, I would recommend taking a look at the Alex documentation. A lof of what is explained in the document must make sense if you got this far in the tutorial. I have also left a bunch of references that I used while I implemented this project. There are other lexers in the wild that has been built using Alex. Hopefully, this tutorial has given you the knowledge you need to understand those implementations.</p>
 <h4 id="limitations-of-the-parser-we-built">Limitations of the parser we built</h4>
 <ol type="1">
-<li>We do support Unicode characters in identifiers</li>
-<li>’' as line continuation character is not supported in our implementation. That can be easily added.</li>
+<li>We do not support Unicode characters in identifiers</li>
+<li>‘\’ as line continuation character is not supported in our implementation. That can be easily added.</li>
 <li>We don’t generate the <code>ENCODE</code> and <code>ENDMARKER</code> tokens. The code is commented out to make it easy for tests.</li>
 </ol>
 <p><a name="references"></a></p>
