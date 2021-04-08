@@ -135,21 +135,21 @@
 <p>We start adding our initial support for white space sensitivity by adding INDENT and DEDENT tokens. Then we handle the complexity involved with newlines when mixed with comments and parens.</p>
 <p>By the end of this section we will have a fully functioning lexer which is (almost) true (upto the tests) replica of the Python implementation of the tokenizer.</p>
 <h4 id="a-word-on-the-code-used-in-this-tutorial">A word on the Code used in this tutorial</h4>
-<p>The tutorial uses code that is published at <a href="https://github.com/gdevanla/wya-lexer">write-you-a-lexer</a>. There are 5 Example folder under the <code>src</code> folder. Each <code>Example</code> folder can be run independently as show in the section below.</p>
+<p>The tutorial uses code that is published at <a href="https://github.com/gdevanla/write-you-a-python-lexer">write-you-a-lexer</a>. There are 5 Example folder under the <code>src</code> folder. Each <code>Example</code> folder can be run independently as show in the section below.</p>
 <p>Each of the <code>Example</code> folder also has corresponding tests <code>test_tokenizer*.hs</code>. Each of these tests refer to <code>test_fixtures</code> insides <code>test_fixtures</code> folder. Using the files in the <code>test_fixtures</code> folder tests are generated for each of the implementation in the lexer across all <code>Examples*</code> folder. The test_fixtures folders are numbered to match the <code>Example</code> number. For example, all test_fixtures for lexer implemented under <code>Example4</code> folder can be run using <code>test_tokenizer4.hs</code> which in turn uses the <code>test_fixtures/4/*.txt</code> files as the test fixtures.</p>
 <p><a name="preparation"></a></p>
-<h2 id="preparation-example1">2. Preparation <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example1">(Example1)</a></h2>
+<h2 id="preparation-example1">2. Preparation <a href="https://github.com/gdevanla/write-you-a-python-lexer/tree/main/src/Example1">(Example1)</a></h2>
 <p>As part of the preparation for the tutorial, we will create <code>stack</code> project (using <code>rio</code> as the template).</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="ex">stack</span> new wya-lexer rio</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="bu">cd</span> wya-lexer</span></code></pre></div>
-<p>Alternatively, the project can be cloned from <a href="git@github.com:gdevanla/wya-lexer.git">here</a>. All code used in this tutorial is from this repository.</p>
+<p>Alternatively, the project can be cloned from <a href="git@github.com:gdevanla/write-you-a-python-lexer.git">here</a>. All code used in this tutorial is from this repository.</p>
 <h4 id="chanages-to-package.yaml">Chanages to package.yaml</h4>
-<p>You can refer to the <a href="https://github.com/gdevanla/wya-lexer/blob/main/package.yaml"><code>package.yaml</code></a>. An important note to note in this file, is that we add a <code>cabal</code> directive as follow:</p>
+<p>You can refer to the <a href="https://github.com/gdevanla/write-you-a-python-lexer/blob/main/package.yaml"><code>package.yaml</code></a>. An important note to note in this file, is that we add a <code>cabal</code> directive as follow:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="fu">build-tools</span><span class="kw">:</span><span class="at"> alex</span></span></code></pre></div>
 <p>This directive allows cabal to execute <code>alex</code> on any files with <code>.x</code> extensions. Running, <code>alex</code> on this file makes all <code>*.x</code> modules available to the project. More information on this directive can be found in the documentation for <code>cabal</code>.</p>
 <p><a name="type_and_function"></a></p>
 <h4 id="types-and-functions-required-by-alex">2.1 Types and Functions required by Alex</h4>
-<p>For the initial setup, we will add the following <code>type</code> and <code>functions</code> required by <code>Alex</code>. We will refine these <code>types</code> and <code>functions</code> in future iterations. For now, we will add the following defintions to <a href="https://github.com/gdevanla/wya-lexer/blob/main/src/Example1/LexerUtil.hs"><code>src/Example1/LexerUtil.hs</code></a>. More detailed information about why need these functions and types can be found in the alex <a href="https://www.haskell.org/alex/doc/html/basic-api.html">documentation</a>. We will also get familiar with these types and functions as we work through this tutorial.</p>
+<p>For the initial setup, we will add the following <code>type</code> and <code>functions</code> required by <code>Alex</code>. We will refine these <code>types</code> and <code>functions</code> in future iterations. For now, we will add the following defintions to <a href="https://github.com/gdevanla/write-you-a-python-lexer/blob/main/src/Example1/LexerUtil.hs"><code>src/Example1/LexerUtil.hs</code></a>. More detailed information about why need these functions and types can be found in the alex <a href="https://www.haskell.org/alex/doc/html/basic-api.html">documentation</a>. We will also get familiar with these types and functions as we work through this tutorial.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Byte</span> <span class="ot">=</span> <span class="dt">Word8</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">AlexInput</span> <span class="ot">=</span> (<span class="dt">Char</span>, [<span class="dt">Byte</span>], <span class="dt">String</span>)</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a></span>
@@ -161,7 +161,7 @@
 <span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>    [] <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;Not byte returned for &quot;</span> <span class="op">++</span> <span class="fu">show</span> c</span></code></pre></div>
 <p>One way to understand how these definitions work, is to imagine <code>Alex</code> starting with the initial input <code>AlexInput</code>. Then, <code>Alex</code> iteratively calls <code>alexGetByte</code> to get the next byte. <code>Alex</code> needs to match the <code>rules</code> we provide as it reads each byte from the call to <code>alexGetByte</code>. Once the entire byte for the character is read, <code>Alex</code> will call <code>action</code> and then recursively call this function with the <code>new</code> input that was returned as part of the earlier call to <code>alexGetByte</code>. Note, that <code>Alex</code> does not make any assumptions on the <code>type</code> of Alexinput, just that it needs an <code>input</code> to recursively pass it to <code>alexGetByte</code>. This state of this input determines what <code>getAlexByte</code> can work on to get the next byte.</p>
 <p>We will be refinining the <code>AlexInput</code> type and the <code>alexGetByte</code> function throughout this tutorial.</p>
-<p>Since, Alex translates all matches of the rules we provide into a <code>token</code>, we need to provide definitions of <code>Token</code> we want to capture. We will define the first version as follows in <a href="https://github.com/gdevanla/wya-lexer/blob/main/src/Example1/Tokens.hs"><code>Example1.Token</code></a>.</p>
+<p>Since, Alex translates all matches of the rules we provide into a <code>token</code>, we need to provide definitions of <code>Token</code> we want to capture. We will define the first version as follows in <a href="https://github.com/gdevanla/write-you-a-python-lexer/blob/main/src/Example1/Tokens.hs"><code>Example1.Token</code></a>.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="co">-- basic tokens</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Token</span> <span class="ot">=</span></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>      <span class="dt">Name</span></span>
@@ -196,10 +196,10 @@
 <span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a>    }</span></code></pre></div>
 <p>Now, we are ready to define our first version of Lexer rules. That will be our task in the first iteration.</p>
 <p><a name="first"></a></p>
-<h2 id="basic-lexer-example1">3. Basic Lexer <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example1">(Example1)</a></h2>
+<h2 id="basic-lexer-example1">3. Basic Lexer <a href="https://github.com/gdevanla/write-you-a-python-lexer/tree/main/src/Example1">(Example1)</a></h2>
 <p>In this iteration, we will define a basic set of rules that captures any valid (non-unicode) identifiers in Python and also capture decimal values, including whitespace and newlines. We will skip the new lines in this iteration.</p>
 <p>Alex provides two building blocks to define rules. The basic block is to define a <code>character set</code> rules to match on. These identifiers for these rules are preceded by <code>$</code> symbol. This <code>set</code> rules can be combinted together and defined as <code>macros</code>. The identifiers of these macros are prefixed with <code>@</code> symbol. In our initial set of rules, we will use examples of both these structures.</p>
-<p>The entire file can be found <a href="https://github.com/gdevanla/wya-lexer/blob/main/src/Example1/Lexer.x">here</a></p>
+<p>The entire file can be found <a href="https://github.com/gdevanla/write-you-a-python-lexer/blob/main/src/Example1/Lexer.x">here</a></p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="co">--- (Example1.Lexer.x)</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a><span class="co">--- the character set rules</span></span>
@@ -273,7 +273,7 @@
 <span id="cb11-14"><a href="#cb11-14" aria-hidden="true"></a> <span class="ex">action</span>  (if tok == EOF END else loop back to runLexer)<span class="ex">-----</span><span class="op">&gt;</span></span></code></pre></div>
 <p>With this we have our first iteration of the lexer! We used this iteration to set up the modules, types and function. We will build upon these simple types and function during our future iterations.</p>
 <p><a name="numeric_and_string"></a></p>
-<h2 id="support-numeric-values-and-string-literals-example2">4 Support Numeric Values and String Literals <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example2">(Example2)</a></h2>
+<h2 id="support-numeric-values-and-string-literals-example2">4 Support Numeric Values and String Literals <a href="https://github.com/gdevanla/write-you-a-python-lexer/tree/main/src/Example2">(Example2)</a></h2>
 <p>Python has diverse support for how numeric values and string literals can be defined in the Python code. In this iteration, our objective is to define the rules that will handle the entire set of numerical values and also string literals supported by Python. The lexical grammar for string literals and numerical values can be found <a href="https://docs.python.org/3/reference/lexical_analysis.html#literals">here</a> and <a href="https://docs.python.org/3/reference/lexical_analysis.html#literals">here</a>.</p>
 <p><a name="numerical_values"></a></p>
 <h4 id="adding-support-for-numerical-values">4.1 Adding support for numerical values</h4>
@@ -452,7 +452,7 @@
 <span id="cb28-9"><a href="#cb28-9" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Example2.Tokens.TokenInfo</span>]</span></code></pre></div>
 <p>More examples can be found in test_fixtures of this iteration under <code>test/test_fixtures/2</code></p>
 <p><a name="capture_src_loc"></a></p>
-<h2 id="capture-the-source-location-of-tokens-example3">5. Capture The Source Location of Tokens <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example3">(Example3)</a></h2>
+<h2 id="capture-the-source-location-of-tokens-example3">5. Capture The Source Location of Tokens <a href="https://github.com/gdevanla/write-you-a-python-lexer/tree/main/src/Example3">(Example3)</a></h2>
 <p>Up until now, you would have noticed the <code>start_pos</code> and <code>end_pos</code> values in the <code>TokenInfo</code> are set to (0, 0). We have not captured the location in the input string that was used to generate a particular <code>TokenInfo</code> value. We will fix that in this iteration.</p>
 <p>Before that let’s add support for special characters to our lexer.</p>
 <p>Thus far, our lexer only processes the <code>NAME</code>, <code>STRING</code> and <code>NUMBER</code> tokens. Let’s extend the definition of <code>Token</code> to capture all the special characters and their meaning as follows:</p>
@@ -546,7 +546,7 @@
 <span id="cb34-6"><a href="#cb34-6" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Example3.Tokens.TokenInfo</span>]</span>
 <span id="cb34-7"><a href="#cb34-7" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span></span></code></pre></div>
 <p><a name="state_monad"></a></p>
-<h2 id="store-state-in-a-state-monad-example4">6. Store state in a State Monad <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example4">(Example4)</a></h2>
+<h2 id="store-state-in-a-state-monad-example4">6. Store state in a State Monad <a href="https://github.com/gdevanla/write-you-a-python-lexer/tree/main/src/Example4">(Example4)</a></h2>
 <p>By now you might have noticed we are not handling newlines or identations yet. Python’s grammar is context-senstive and the lexer we constructed so far does not use the context of surrounding tokens yet. We did not have to store the state of our lexer up until now. But, to support the white-space sensitive requirements of the Python grammar we will have to preserve the state of the context.</p>
 <p>There are many approaches to solving this problem. One could entirely use the <code>start_code</code> machinery provided my Alex to achieve this. In this tutorial, we will adopt the State Monad machinery to store and retrieve the context. We will as earlier, use the code Alex would have generated if we had used the <a href="https://www.haskell.org/alex/doc/html/wrappers.html"><code>%wrapper monadUserState</code></a> directive. One could easily replace this code with the stock State monad.</p>
 <p>Let’s first think about all the information we would like to store in our state. You might have noticed that we are already implicitly carrying around state in the form of <code>AlexInput</code>, which gets passed to the <code>alexScan</code> function and gets updated in the <code>alexGetByte</code> function. So, may be we can abstract that information into our new state. We also need additional information we would like to store to handle newlines, indentations, empty new lines, lines with just comments etc. Later on we will also have to handle cases where <code>()</code> are used to express break up statements across multiple lines.</p>
@@ -700,7 +700,7 @@
 <span id="cb40-4"><a href="#cb40-4" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Example4.Tokens.TokenInfo</span>]</span>
 <span id="cb40-5"><a href="#cb40-5" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span></span></code></pre></div>
 <p><a name="final"></a></p>
-<h2 id="supporting-whitespace-context-and-having-a-full-lexer-example5">7. Supporting Whitespace context (and having a Full Lexer!) <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example5">(Example5)</a></h2>
+<h2 id="supporting-whitespace-context-and-having-a-full-lexer-example5">7. Supporting Whitespace context (and having a Full Lexer!) <a href="https://github.com/gdevanla/write-you-a-python-lexer/tree/main/src/Example5">(Example5)</a></h2>
 <p>It has been interesting so far. But, we are not done yet. This probably will be the most difficult task to implement. We had to go through the process of setting up the state monad just to accomplish this task we have at hand. Let’s look at some examples on how the Python tokenizer behaves when it comes to handling whitespaces.</p>
 <p><a name="complexity"></a></p>
 <h4 id="the-complexity-of-newlines-indents-and-dedents">7.1 The Complexity of Newlines, Indents and Dedents</h4>
