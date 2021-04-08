@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>blog <| code - Alex by example (Write You A Python Lexer)</title>
+        <!--web fonts-->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css"> -->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css"> -->
+
+        <link rel="stylesheet" href="../css/main.css" type="text/css" />
+        <!-- <link rel="stylesheet" href="/css/default.css" type="test/css"/> -->
+        <!-- <link rel="stylesheet" href="/css/syntax.css" type="text/css" /> -->
+        <link rel="stylesheet" href="../css/tango.css" type="text/css" />
+        <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+
+    </head>
+    <body>
+      <header>
+        <span><a class="title" href="../index.html"><h1>blog &lt| code </h1></a></span>
+        <nav>
+          <ul>
+            <li><a href="../index.html">posts</a></li>
+            <li><a href="../archive.html">archives</a></li>
+            <li><a href="../pages/books.html">RYAS</a></li>
+            <li><a href="../about.html">about</a></li>
+          </ul>
+        </nav>
+      </header>
+        <main role="main">
+            <section id="content" class="body">
+  <article>
+    <header>
+      <h1>Alex by example (Write You A Python Lexer)</h1>
+      <div class="extra-info">
+        <abbr class="published" title="{{ article.date.isoformat() }}">2021-04-04</abbr>
+      </div><!-- /.entry-content -->
+    </header>
+    <section>
+        <h2 id="contents">Contents</h2>
+<ol type="1">
+<li><a href="#objective">Objective</a>
+<ul>
+<li><a href="#how-org">Organization of Content</a></li>
+</ul></li>
+<li><a href="#preparation">Preparation</a>
+<ul>
+<li><a href="#type_and_function">Type And Functions Required by Alex</a></li>
+</ul></li>
+<li><a href="#first">Basic Lexer</a></li>
+<li><a href="#numeric_and_string">Support Numeric Values and String Values</a>
+<ol type="1">
+<li><a href="#numerical_values">Lexer for Numeric Values</a></li>
+<li><a href="#string_values">Lexer for String Literals</a></li>
+</ol></li>
+<li><a href="#capture_src_loc">Capture the Source Location of Tokens</a></li>
+<li><a href="#state_monad">Store State in State Monad</a></li>
+<li><a href="#final">Support Whitespace context(and have a Full Lexer!</a>
+<ol type="1">
+<li><a href="#complexity">The Complexity of Newlines, Idents and Dedents</a></li>
+<li><a href="#capture_newline">Capture Newlines, INDENTs and DEDENTs</a></li>
+<li><a href="#paren_newline">Addressing Parens and Comments (with Newlines)</a></li>
+<li><a href="#comment_newline">Special handling for Comments</a></li>
+<li><a href="#match_parens">Matching Parens</a></li>
+</ol></li>
+<li><a href="#conclusion">That’s a wrap!</a></li>
+<li><a href="#references">References</a></li>
+</ol>
+<p><a name="objective"></a></p>
+<h2 id="objective">Objective</h2>
+<p>The main goal of this tutorial is to build a lexer for Python 3.9 language specification as described <a href="https://docs.python.org/3/reference/lexical_analysis.html">here</a>. By working through this tutorial we will be replicating the complete behavior of the tokenizer implemented in <a href="https://github.com/python/cpython/blob/3.9/Lib/tokenize.py">Lib/tokenizer.py</a> and described <a href="https://docs.python.org/3/library/tokenize.html">here</a>. The final implementation of this tutorial has around 80+ tests that were directly extracted using the tests fixtures and results used in <a href="https://github.com/python/cpython/blob/3.9/Lib/test/test_tokenize.py">test/test_tokenize.py</a></p>
+<p>By working towards this goal, the reader should acquire enough familiarity to implement a real world lexer for a serious language using the <code>Alex</code>.</p>
+<h4 id="the-objectives-of-this-tutorial-are-as-follows">The objectives of this tutorial are as follows:</h4>
+<ul>
+<li>Build an real world project using Alex (here we build a Lexer for Python 3.9)</li>
+<li>Learn the different features of Alex as we incrementatlly build the Lexer (macros, set expressions, rules, actions etc)</li>
+<li>Motivate and use approaches that are required to implement a complete Lexer (context-sensitive lexer with State)</li>
+</ul>
+<h4 id="what-this-article-is-not">What this article is not</h4>
+<ul>
+<li>This article is not a replacement of more precise documenation on Alex. But, you would greatly benefit from this article if you were to refer to the documentation as you work through the examples.</li>
+<li>Does not teach you about <code>lexers</code> and its theory. Some basic understanding of how lexer works is expected, but reading through the example should also provide sufficient guidance.</li>
+</ul>
+<h4 id="who-is-this-book-for">Who is this book for</h4>
+<p>If you are interested in implementing a real world lexer and use it in your projects, then working through the example in this book should give you enough knowledge and familiarity.</p>
+<ul>
+<li>The article assumes basic knowledge with Haskell. The later examples in the book uses State monads and that is as complicated as we will get.</li>
+<li>Someone who is familiar with lexer atleast at the very basic level</li>
+<li>Familiarity with Regular Expressions is assumed</li>
+<li>Familiarity with Python 3.0 language syntax is assumed</li>
+</ul>
+<p><a name="how-org"></a></p>
+<h4 id="how-the-tutorial-is-organized">1.1 How the tutorial is organized</h4>
+<h5 id="preparation">Preparation</h5>
+<p>We build the basic plumbing we need in terms of project creation, adding a boiler plate code that the Alex lexer needs.</p>
+<h5 id="basic-lexer">Basic Lexer</h5>
+<p>We build a basix lexer that supports Identifiers, Numerals and some math operators (+,-,*,/). We use this iteration to also provide some functions Alex expects us to implement extending what we built in the Preparation section. <a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>.</p>
+<h4 id="support-numeric-values-and-string-values">Support Numeric Values And String Values</h4>
+<p>We will use the <code>regular expression</code> and <code>macro</code> features provided by Alex to support decimals and various floating point representations. Examples of support include values like <code>42</code>, <code>42e10</code>, <code>0.42e-10</code> etc.</p>
+<p>Since we are building a lexer for the Python 3 version of the language, we have an interesting tasks for supporting a wide range of string representations. The variety of string representation supported by Python is available <a href="https://docs.python.org/3/reference/lexical_analysis.html#literals">here</a>. Our lexer will support all these representation at the end of this section</p>
+<h4 id="capture-the-source-location">Capture the Source Location</h4>
+<p>By now you would have noticed that we have not captures the Token positions. In this iteration we will handle that and capture the exact starting and ending positions of each Token we generate. While working on this we will try to stay true to how the Python tokenizer works.</p>
+<h4 id="store-the-state-in-a-state-monad">Store the State in a State Monad</h4>
+<p>Python language is white-space sensitive. Until, this iteration we did not have to deal with it. But, before we add support for that we will have to build the machinery to capture the context of the state the lexer is in when encounter newlines, empty lines, comments and whitespaces(representing indentations)</p>
+<h4 id="support-whitespace-context-and-a-full-lexer">Support Whitespace Context (and a Full Lexer!)</h4>
+<p>We start adding our initial support for white space sensitivity by adding INDENT and DEDENT tokens. Then we handle the complexity involved with newlines when mixed with comments and parens.</p>
+<p>By the end of this section we will have a fully functioning lexer which is (almost) true (upto the tests) replica of the Python implementation of the tokenizer.</p>
+<h4 id="a-word-on-the-code-used-in-this-tutorial">A word on the Code used in this tutorial</h4>
+<p>The tutorial uses code that is published at <a href="https://github.com/gdevanla/wya-lexer">write-you-a-lexer</a>. There are 5 Example folder under the <code>src</code> folder. Each <code>Example</code> folder can be run independently as show in the section below.</p>
+<p>Each of the <code>Example</code> folder also has corresponding tests <code>test_tokenizer*.hs</code>. Each of these tests refer to <code>test_fixtures</code> insides <code>test_fixtures</code> folder. Using the files in the <code>test_fixtures</code> folder tests are generated for each of the implementation in the lexer across all <code>Examples*</code> folder. The test_fixtures folders are numbered to match the <code>Example</code> number. For example, all test_fixtures for lexer implemented under <code>Example4</code> folder can be run using <code>test_tokenizer4.hs</code> which in turn uses the <code>test_fixtures/4/*.txt</code> files as the test fixtures.</p>
+<p><a name="preparation"></a></p>
+<h2 id="preparation-example1">2. Preparation <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example1">(Example1)</a></h2>
+<p>As part of the preparation for the tutorial, we will create <code>stack</code> project (using <code>rio</code> as the template).</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="ex">stack</span> new wya-lexer rio</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="bu">cd</span> wya-lexer</span></code></pre></div>
+<p>Alternatively, the project can be cloned from <a href="git@github.com:gdevanla/wya-lexer.git">here</a>. All code used in this tutorial is from this repository.</p>
+<h4 id="chanages-to-package.yaml">Chanages to package.yaml</h4>
+<p>You can refer to the <a href="https://github.com/gdevanla/wya-lexer/blob/main/package.yaml"><code>package.yaml</code></a>. An important note to note in this file, is that we add a <code>cabal</code> directive as follow:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="fu">build-tools</span><span class="kw">:</span><span class="at"> alex</span></span></code></pre></div>
+<p>This directive allows cabal to execute <code>alex</code> on any files with <code>.x</code> extensions. Running, <code>alex</code> on this file makes all <code>*.x</code> modules available to the project. More information on this directive can be found in the documentation for <code>cabal</code>.</p>
+<p><a name="type_and_function"></a></p>
+<h4 id="types-and-functions-required-by-alex">2.1 Types and Functions required by Alex</h4>
+<p>For the initial setup, we will add the following <code>type</code> and <code>functions</code> required by <code>Alex</code>. We will refine these <code>types</code> and <code>functions</code> in future iterations. For now, we will add the following defintions to <a href="https://github.com/gdevanla/wya-lexer/blob/main/src/Example1/LexerUtil.hs"><code>src/Example1/LexerUtil.hs</code></a>. More detailed information about why need these functions and types can be found in the alex <a href="https://www.haskell.org/alex/doc/html/basic-api.html">documentation</a>. We will also get familiar with these types and functions as we work through this tutorial.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Byte</span> <span class="ot">=</span> <span class="dt">Word8</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">AlexInput</span> <span class="ot">=</span> (<span class="dt">Char</span>, [<span class="dt">Byte</span>], <span class="dt">String</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a><span class="ot">alexGetByte ::</span> <span class="dt">AlexInput</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">Byte</span>,<span class="dt">AlexInput</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>alexGetByte (c,b<span class="op">:</span>bs,s) <span class="ot">=</span> <span class="dt">Just</span> (b,(c,bs,s))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>alexGetByte (_,[],[]) <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>alexGetByte (_,[],c<span class="op">:</span>s)  <span class="ot">=</span>  <span class="kw">case</span> encode [c] <span class="kw">of</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>    b <span class="op">:</span> bs <span class="ot">-&gt;</span> <span class="dt">Just</span> (b, (c, bs, s))</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>    [] <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;Not byte returned for &quot;</span> <span class="op">++</span> <span class="fu">show</span> c</span></code></pre></div>
+<p>One way to understand how these definitions work, is to imagine <code>Alex</code> starting with the initial input <code>AlexInput</code>. Then, <code>Alex</code> iteratively calls <code>alexGetByte</code> to get the next byte. <code>Alex</code> needs to match the <code>rules</code> we provide as it reads each byte from the call to <code>alexGetByte</code>. Once the entire byte for the character is read, <code>Alex</code> will call <code>action</code> and then recursively call this function with the <code>new</code> input that was returned as part of the earlier call to <code>alexGetByte</code>. Note, that <code>Alex</code> does not make any assumptions on the <code>type</code> of Alexinput, just that it needs an <code>input</code> to recursively pass it to <code>alexGetByte</code>. This state of this input determines what <code>getAlexByte</code> can work on to get the next byte.</p>
+<p>We will be refinining the <code>AlexInput</code> type and the <code>alexGetByte</code> function throughout this tutorial.</p>
+<p>Since, Alex translates all matches of the rules we provide into a <code>token</code>, we need to provide definitions of <code>Token</code> we want to capture. We will define the first version as follows in <a href="https://github.com/gdevanla/wya-lexer/blob/main/src/Example1/Tokens.hs"><code>Example1.Token</code></a>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="co">-- basic tokens</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Token</span> <span class="ot">=</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>      <span class="dt">Name</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Number</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">String</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Op</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a>    <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a><span class="co">-- the augmented structure that will store more information about the tokens</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">TokenInfo</span> <span class="ot">=</span> <span class="dt">TokenInfo</span> {</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a><span class="ot">    token_type::</span> <span class="dt">Token</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a>  ,<span class="ot"> token_string::</span> <span class="dt">T.Text</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a>  ,<span class="ot"> start_pos::</span> (<span class="dt">Int</span>, <span class="dt">Int</span>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a>  ,<span class="ot"> end_pos::</span> (<span class="dt">Int</span>, <span class="dt">Int</span>)</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a>  }</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Eq</span>)</span></code></pre></div>
+<p>Now, in <code>Example1.LexerUtil</code>, we also need to provide an <code>action</code> function that <code>Alex</code> will call to generate the <code>TokenInfo</code> value. The initial implementation here is again simple and will be improved later on.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="co">-- adopted from Alex documentation</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">AlexAction</span> <span class="ot">=</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">AlexInput</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">TokenInfo</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a><span class="ot">action ::</span> <span class="dt">AlexAction</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a>action tok inp inp_len <span class="ot">=</span> <span class="kw">let</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a>  (c, _, s) <span class="ot">=</span> inp</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a>  <span class="kw">in</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a>    <span class="dt">TokenInfo</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a>    {</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>      token_type <span class="ot">=</span> tok,</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>      token_string<span class="ot">=</span>T.pack (<span class="fu">take</span> inp_len s),</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>      start_pos<span class="ot">=</span>(<span class="dv">0</span>, <span class="dv">0</span>),</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>      end_pos<span class="ot">=</span>(<span class="dv">0</span>, <span class="dv">0</span>)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a>    }</span></code></pre></div>
+<p>Now, we are ready to define our first version of Lexer rules. That will be our task in the first iteration.</p>
+<p><a name="first"></a></p>
+<h2 id="basic-lexer-example1">3. Basic Lexer <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example1">(Example1)</a></h2>
+<p>In this iteration, we will define a basic set of rules that captures any valid (non-unicode) identifiers in Python and also capture decimal values, including whitespace and newlines. We will skip the new lines in this iteration.</p>
+<p>Alex provides two building blocks to define rules. The basic block is to define a <code>character set</code> rules to match on. These identifiers for these rules are preceded by <code>$</code> symbol. This <code>set</code> rules can be combinted together and defined as <code>macros</code>. The identifiers of these macros are prefixed with <code>@</code> symbol. In our initial set of rules, we will use examples of both these structures.</p>
+<p>The entire file can be found <a href="https://github.com/gdevanla/wya-lexer/blob/main/src/Example1/Lexer.x">here</a></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="co">--- (Example1.Lexer.x)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a><span class="co">--- the character set rules</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a><span class="op">$</span>digit <span class="ot">=</span> <span class="dv">0</span><span class="op">-</span><span class="dv">9</span>   <span class="co">-- digits</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a><span class="op">$</span>alpha <span class="ot">=</span> [a<span class="op">-</span>zA<span class="op">-</span><span class="dt">Z_</span>]  <span class="co">-- alphabetic characters</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a><span class="op">$</span>white_no_nl <span class="ot">=</span> [\ \t]</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true"></a><span class="co">-- a macro that combines the character set rules</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true"></a><span class="co">-- here this macro captures any valid Python identifier</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true"></a><span class="op">@</span>identifier <span class="ot">=</span> <span class="op">$</span>alpha [<span class="op">$</span>alpha <span class="op">$</span>digit \_]<span class="op">*</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true"></a><span class="co">-- a macros that combines character sets to capture a decimal number</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true"></a><span class="op">@</span>decnumber <span class="ot">=</span> (<span class="dv">0</span>(_<span class="op">?</span><span class="dv">0</span>)<span class="op">*</span> <span class="op">|</span> [<span class="dv">1</span><span class="op">-</span><span class="dv">9</span>](_<span class="op">?</span>[<span class="dv">0</span><span class="op">-</span><span class="dv">9</span>])<span class="op">*</span>)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true"></a></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true"></a><span class="co">-- a macros just currently combines a decimal number.</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true"></a><span class="dt">Later</span> on we will add more macros to this definition</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true"></a><span class="op">@</span>number <span class="ot">=</span> <span class="op">@</span>decnumber</span></code></pre></div>
+<p>Now, it is time to use these <code>macros</code> and let <code>Alex</code> call our <code>action</code> function on matching tokens to that we can build our <code>TokenInfo</code> value. Therefore, next we define the rules.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a><span class="co">--- (Example1.Lexer.x)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a>tokens <span class="op">:-</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a>       <span class="co">--- instruct Alex to call `action` with the `Number` token when the set of characters matches the @number macro</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a>       <span class="op">@</span>number {action <span class="dt">Number</span>}</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a>       <span class="co">-- instruct Alex to call `action` with the `Name` token when the set of characters matches the @identifier macro</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true"></a>       <span class="op">@</span>identifier {action <span class="dt">Name</span>}</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true"></a>       <span class="co">--- for now we skip whitespaces/newlines/tabs etc</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true"></a>       <span class="op">$</span>white<span class="op">+</span> ;     <span class="co">-- this ignores new lines as well</span></span></code></pre></div>
+<p>Finally, to run the lexer we will provide the following function in (Example1.Lexer.x) to satisfy module dependencies. We will invoke this function in one of our entry point functions. This function recursively calls <code>alexScan</code> until all tokens are scanned and <code>Alex</code> returns an <code>AlexEOF</code> value. (The mechanics of <code>alexScan</code> calls the <code>alexGetByte</code> function we provided earlier). Note that, this function will return the list of <code>TokenInfo</code> values.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="co">-- adapted from https://www.haskell.org/alex/doc/html/wrappers.html</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a><span class="co">-- alexScanTokens :: String -&gt; [TokenInfo]</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>lexer str <span class="ot">=</span> go (<span class="ch">'\n'</span>,[],str)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a>  <span class="kw">where</span> go inp<span class="op">@</span>(_,_bs,str) <span class="ot">=</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a>          <span class="kw">case</span> alexScan inp <span class="dv">0</span> <span class="kw">of</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>            <span class="dt">AlexEOF</span> <span class="ot">-&gt;</span> []</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>            <span class="dt">AlexError</span> _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;lexical error&quot;</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a>            <span class="dt">AlexSkip</span>  inp' len     <span class="ot">-&gt;</span> go inp'</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>            <span class="dt">AlexToken</span> inp' len act <span class="ot">-&gt;</span> act inp len <span class="op">:</span> go inp'</span></code></pre></div>
+<p>To run the lexer, we have a helper function in <code>Example1.LexerRunner.hs</code> that can be run from ghci.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span><span class="kw">import</span> <span class="dt">Example1.LexerRunner</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>runLexer <span class="st">&quot;zzz&quot;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;zzz&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)}]</span></code></pre></div>
+<p>Note, that <code>zzz</code> parses to a <code>Name</code> token. The <code>start_pos</code> and <code>end_pos</code> are not set. We will fix that later.</p>
+<p>Here are other example of <code>decimals</code> generating <code>Number</code> and also an example of skipping <code>whitespaces</code>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">TokenInfo</span>]</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>runLexer <span class="st">&quot;42&quot;</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Number</span>, token_string <span class="ot">=</span> <span class="st">&quot;42&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)}]</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">TokenInfo</span>]</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>runLexer <span class="st">&quot;42\nvariable&quot;</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Number</span>, token_string <span class="ot">=</span> <span class="st">&quot;42&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;variable&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)}]</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">TokenInfo</span>]</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span></span></code></pre></div>
+<p>Here is some ascii art that describes the control flow</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a><span class="ex">runLexer</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a>  <span class="kw">|</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true"></a>  <span class="kw">|</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true"></a>  <span class="ex">V</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true"></a> <span class="ex">lexer</span> (runs in loop until  <span class="op">&lt;</span>--------------------------------</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true"></a>  <span class="kw">|</span>                                                          ^</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true"></a>  <span class="kw">|</span>                                                          <span class="kw">|</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true"></a>  <span class="ex">V</span>                                                          <span class="kw">|</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true"></a> <span class="ex">alexScan</span> inp 0 (alex scans input for a matching rule)       <span class="kw">|</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true"></a>  <span class="kw">|</span>                                                          <span class="kw">|</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true"></a>  <span class="kw">|</span>  <span class="kw">(</span><span class="ex">matching</span> rule found, then call corresponding action<span class="kw">)</span>   <span class="kw">|</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true"></a>  <span class="ex">V</span>                                                          <span class="kw">|</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true"></a> <span class="ex">action</span>  (if tok == EOF END else loop back to runLexer)<span class="ex">-----</span><span class="op">&gt;</span></span></code></pre></div>
+<p>With this we have our first iteration of the lexer! We used this iteration to set up the modules, types and function. We will build upon these simple types and function during our future iterations.</p>
+<p><a name="numeric_and_string"></a></p>
+<h2 id="support-numeric-values-and-string-literals-example2">4 Support Numeric Values and String Literals <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example2">(Example2)</a></h2>
+<p>Python has diverse support for how numeric values and string literals can be defined in the Python code. In this iteration, our objective is to define the rules that will handle the entire set of numerical values and also string literals supported by Python. The lexical grammar for string literals and numerical values can be found <a href="https://docs.python.org/3/reference/lexical_analysis.html#literals">here</a> and <a href="https://docs.python.org/3/reference/lexical_analysis.html#literals">here</a>.</p>
+<p><a name="numerical_values"></a></p>
+<h4 id="adding-support-for-numerical-values">4.1 Adding support for numerical values</h4>
+<p>We will first support numerical values and then work our way in supporting string literals. The below table show the entire set of rules for supporting numerical values. The text following the example breaks down these rules and provides some explanation.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="ex">---</span> Example2/Lexer.x</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a><span class="va">$nonzerodigit</span> = [<span class="ex">1..9</span>]</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a><span class="va">$bindigit</span>     =  [<span class="ex">01</span>]</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a><span class="va">$octdigit</span>     = [<span class="ex">0..7</span>]</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a><span class="ex">@hexdigit</span>     =  <span class="va">$digit</span> <span class="kw">|</span> [<span class="ex">a-f</span>] <span class="kw">|</span> [<span class="ex">A-F</span>]</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a><span class="ex">@decinteger</span> = (0(_?0)<span class="ex">*</span> <span class="kw">|</span> [<span class="ex">1-9</span>](_?[0-9])<span class="ex">*</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a><span class="ex">@hexinteger</span>   = ([0][xX](_?[0-9a-fA-F])<span class="ex">+</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a><span class="ex">@bininteger</span> = (0[bB](_?[01])<span class="ex">+</span>)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true"></a><span class="ex">@octinteger</span> = (0[oO](_?[0-7])<span class="ex">+</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true"></a><span class="ex">@intnumber</span>    =  @decinteger <span class="kw">|</span> <span class="ex">@bininteger</span> <span class="kw">|</span> <span class="ex">@octinteger</span> <span class="kw">|</span> <span class="ex">@hexinteger</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true"></a></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true"></a><span class="ex">@digitpart</span>     =  <span class="va">$digit</span>([_]<span class="kw">|</span><span class="va">$digit</span>)<span class="ex">*</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true"></a><span class="ex">@fraction</span>      =  [\.] @digitpart</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a><span class="ex">@pointfloat</span>    =  (@digitpart)<span class="ex">*</span> @fraction <span class="kw">|</span> <span class="ex">@digitpart</span>[\.]</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true"></a></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true"></a><span class="ex">@exponent</span>      =  [eE] ([\+\-]?) <span class="ex">@digitpart</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true"></a><span class="ex">@exponentfloat</span> =  (@digitpart <span class="kw">|</span> <span class="ex">@pointfloat</span>)<span class="ex">*</span> @exponent</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true"></a></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true"></a><span class="ex">@floatnumber</span>   =  @pointfloat <span class="kw">|</span> <span class="ex">@exponentfloat</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true"></a></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true"></a><span class="ex">@imagnumber</span>    =  (@floatnumber <span class="kw">|</span> <span class="ex">@digitpart</span>) [<span class="ex">jJ</span>]</span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true"></a><span class="ex">@number</span> = @imagnumber <span class="kw">|</span> <span class="ex">@floatnumber</span> <span class="kw">|</span> <span class="ex">@intnumber</span></span></code></pre></div>
+<p>We first declare our primitive character sets as follows</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>$digit        = [0..9] -- this is provided by Alex. We leave it here for completeness</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>$nonzerodigit = [1..9]</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a>$bindigit     =  [01]</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>$octdigit     = [0..7]</span></code></pre></div>
+<p>Now, lets support decimal integers such as <code>42</code>, <code>42_00</code>, <code>00_00</code> etc. We declare similar macros for hex, binary and octal numbers</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a>@decinteger = (0(_?0)* | [1-9](_?[0-9])*)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a>@hexinteger   = ([0][xX](_?[0-9a-fA-F])+)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a>@bininteger = (0[bB](_?[01])+)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true"></a>@octinteger = (0[oO](_?[0-7])+)</span></code></pre></div>
+<p>Finally, we put together all integer representations into one macro</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a>@intnumber    =  @decinteger | @bininteger | @octinteger | @hexinteger</span></code></pre></div>
+<p>Next, we deal with floating point representations. Note that Python supports floating point numbers such as <code>.42</code>, <code>0.42</code>, <code>42.</code>. <code>42_42.42_42</code>.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a>@digitpart     =  $digit([_]|$digit)*</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a>@fraction      =  [\.] @digitpart</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a>@pointfloat    =  (@digitpart)* @fraction | @digitpart[\.]</span></code></pre></div>
+<p>We also need to add support for exponents, such as <code>1e12</code>, <code>1_1e1_1</code>, <code>0.12e12_1</code> etc.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a>@exponent      =  [eE] ([\+\-]?) @digitpart</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a>@exponentfloat =  (@digitpart | @pointfloat)* @exponent</span></code></pre></div>
+<p>Finally, we need a simple declaration for imaginary numberss</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a>@imagnumber    =  (@floatnumber | @digitpart) [jJ]</span></code></pre></div>
+<p>Now, we put together all our rules for supporting integers, floats and imaginary numbers.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a>@number = @imagnumber | @floatnumber | @intnumber</span></code></pre></div>
+<p><a name="string_values"></a></p>
+<h4 id="lexer-for-string-literals">4.2 Lexer for String Literals</h4>
+<p>As you may already be aware, Python supports specifying string literals in diverse ways. Here are some sample of strings that can be specified inside a Python program.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a><span class="co">&quot;abc&quot;</span>  <span class="co"># double quoted string</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true"></a><span class="co">'abc'</span>  <span class="co"># single quoted string</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true"></a><span class="co">&quot;abc\  # string with line continuation character</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true"></a><span class="co">def&quot;</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true"></a><span class="co">&quot;&quot;&quot;</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true"></a><span class="co">This is an example of a multi-line string</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true"></a><span class="co">&quot;&quot;&quot;</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true"></a><span class="co">'''</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true"></a><span class="co">Another example of a multi-line string</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true"></a><span class="co">'''</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true"></a></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true"></a><span class="co"># supported string prefixes (combinations of r, f, b, u)</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true"></a>b<span class="st">'\xe</span><span class="ch">\0</span><span class="st">e\xe\xe'</span>  <span class="co"># byte string</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true"></a><span class="vs">rf&quot;string with prefixes&quot;</span></span></code></pre></div>
+<p>At first supporting these variations might seem daunting. But, fortunately, Python lexical grammer documentation provides a well-broken down defintions that we are use to support this variety of represenations</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a># https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true"></a><span class="dt">stringliteral   </span><span class="st">::=</span><span class="al">  [stringprefix](shortstring | longstring)</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true"></a><span class="dt">stringprefix    </span><span class="st">::=</span><span class="al">  &quot;r&quot; | &quot;u&quot; | &quot;R&quot; | &quot;U&quot; | &quot;f&quot; | &quot;F&quot;</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true"></a>                     | <span class="st">&quot;fr&quot;</span> | <span class="st">&quot;Fr&quot;</span> | <span class="st">&quot;fR&quot;</span> | <span class="st">&quot;FR&quot;</span> | <span class="st">&quot;rf&quot;</span> | <span class="st">&quot;rF&quot;</span> | <span class="st">&quot;Rf&quot;</span> | <span class="st">&quot;RF&quot;</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true"></a><span class="dt">shortstring     </span><span class="st">::=</span><span class="al">  &quot;'&quot; shortstringitem* &quot;'&quot; | '&quot;' shortstringitem* '&quot;'</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true"></a><span class="dt">longstring      </span><span class="st">::=</span><span class="al">  &quot;'''&quot; longstringitem* &quot;'''&quot; | '&quot;&quot;&quot;' longstringitem* '&quot;&quot;&quot;'</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true"></a><span class="dt">shortstringitem </span><span class="st">::=</span><span class="al">  shortstringchar | stringescapeseq</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true"></a><span class="dt">longstringitem  </span><span class="st">::=</span><span class="al">  longstringchar | stringescapeseq</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true"></a><span class="dt">shortstringchar </span><span class="st">::=</span><span class="al">  &lt;any source character except &quot;\&quot; or newline or the quote&gt;</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true"></a><span class="dt">longstringchar  </span><span class="st">::=</span><span class="al">  &lt;any source character except &quot;\&quot;&gt;</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true"></a><span class="dt">stringescapeseq </span><span class="st">::=</span><span class="al">  &quot;\&quot; &lt;any source character&gt;</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true"></a></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true"></a># byte string</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true"></a></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true"></a><span class="dt">bytesliteral   </span><span class="st">::=</span><span class="al">  bytesprefix(shortbytes | longbytes)</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true"></a><span class="dt">bytesprefix    </span><span class="st">::=</span><span class="al">  &quot;b&quot; | &quot;B&quot; | &quot;br&quot; | &quot;Br&quot; | &quot;bR&quot; | &quot;BR&quot; | &quot;rb&quot; | &quot;rB&quot; | &quot;Rb&quot; | &quot;RB&quot;</span></span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true"></a><span class="dt">shortbytes     </span><span class="st">::=</span><span class="al">  &quot;'&quot; shortbytesitem* &quot;'&quot; | '&quot;' shortbytesitem* '&quot;'</span></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true"></a><span class="dt">longbytes      </span><span class="st">::=</span><span class="al">  &quot;'''&quot; longbytesitem* &quot;'''&quot; | '&quot;&quot;&quot;' longbytesitem* '&quot;&quot;&quot;'</span></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true"></a><span class="dt">shortbytesitem </span><span class="st">::=</span><span class="al">  shortbyteschar | bytesescapeseq</span></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true"></a><span class="dt">longbytesitem  </span><span class="st">::=</span><span class="al">  longbyteschar | bytesescapeseq</span></span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true"></a><span class="dt">shortbyteschar </span><span class="st">::=</span><span class="al">  &lt;any ASCII character except &quot;\&quot; or newline or the quote&gt;</span></span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true"></a><span class="dt">longbyteschar  </span><span class="st">::=</span><span class="al">  &lt;any ASCII character except &quot;\&quot;&gt;</span></span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true"></a><span class="dt">bytesescapeseq </span><span class="st">::=</span><span class="al">  &quot;\&quot; &lt;any ASCII character&gt;</span></span></code></pre></div>
+<p>We will use the above defintions to define the rules our lexer needs. We will first deal with regular strings. We can apply the same logic to bytestrings. We will take the same approach as we took for numeric values. The first table here displays the full set of rules we would have defined at the end of this section.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a>-- start string related rules</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true"></a>-- adopted from https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true"></a>$lf = \n  -- line feed</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true"></a>$cr = \r  -- carriage return</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true"></a>@eol_pattern = $lf | $cr $lf | $cr $lf</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true"></a></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true"></a>@stringprefix    =  r | u | R | U | f | F</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true"></a>                     | fr | Fr | fR | FR | rf | rF | Rf | RF</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true"></a></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true"></a>$short_str_char = [^ \n \r ' \&quot; \\]</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true"></a>$shortstringchar_nosinglequote = [^ ' \\ \n]</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true"></a>$shortstringchar_nodoublequote = [^ \&quot; \\ \n]</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true"></a>@stringescapeseq =  [\\](\\|'|\&quot;|@eol_pattern|$short_str_char)</span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true"></a>@shortstringitem_single =  $shortstringchar_nosinglequote | @stringescapeseq</span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true"></a>@shortstringitem_double =  $shortstringchar_nodoublequote | @stringescapeseq</span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true"></a>@shortstring     =  ' @shortstringitem_single* ' | \&quot; @shortstringitem_double* \&quot;</span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true"></a></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true"></a>$longstringchar  = [. \n] # [' \&quot;]</span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true"></a>@longstringitem_single  =  $longstringchar | @stringescapeseq | @one_single_quote | @two_single_quotes | \&quot;</span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true"></a>@longstringitem_double  =  $longstringchar | @stringescapeseq | @one_double_quote | @two_double_quotes | \'</span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true"></a>@longstring      =  (''' @longstringitem_single* ''') | (\&quot;\&quot;\&quot; @longstringitem_double* \&quot;\&quot;\&quot;)</span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true"></a></span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true"></a>@stringliteral   =  (@stringprefix)* (@shortstring | @longstring)</span></code></pre></div>
+<p>That looks complicated. Let’s break it up and look at this in parts. First let’s define the character sets and the string prefixes that will be supported.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a>$lf = \n  -- line feed</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true"></a>$cr = \r  -- carriage return</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true"></a>@eol_pattern = $lf | $cr $lf | $cr $lf</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true"></a></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true"></a>@stringprefix    =  r | u | R | U | f | F</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true"></a>                     | fr | Fr | fR | FR | rf | rF | Rf | RF</span></code></pre></div>
+<p>We will create 2 groups of rules, one group prefixed with <code>short</code> will support strings encolsed in single or double quotes. The second group will support long strings that are created by enclosing them in either <code>'''</code> or <code>"""</code>. Let’s start with the first group.</p>
+<p>For a short string representation, we don’t want to allow <code>\n \r ' '' \' characters, unless they are escaped by the backslash(</code>`). The exception to this rule, is we allow single-quotes without escapes in a double quoted string and vice versa. The following rules, defines these requirements.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a>-- these characters only allowed with escape sequence</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true"></a>$short_str_char = [^ \n \r ' \&quot; \\]</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true"></a>-- with escape character (\) we allow certain characters</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true"></a>@stringescapeseq =  [\\](\\|'|\&quot;|@eol_pattern|$short_str_char)</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true"></a>-- these characters not allowed inside a single-quoted string</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true"></a>$shortstringchar_nosinglequote = [^ ' \\ \n]</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true"></a></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true"></a>-- these characters not allowed inside a double-quoted string</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true"></a>$shortstringchar_nodoublequote = [^ \&quot; \\ \n]</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true"></a></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true"></a>-- combine the above rules to identify a valid character in single quoted string</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true"></a>@shortstringitem_single =  $shortstringchar_nosinglequote | @stringescapeseq</span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true"></a></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true"></a>-- combine the above rules to identify a valid character in a double quoted string</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true"></a>@shortstringitem_double =  $shortstringchar_nodoublequote | @stringescapeseq</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true"></a></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true"></a>-- put together above rules to created a double-quoted or single-quoted string</span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true"></a>@shortstring     =  ' @shortstringitem_single* ' | \&quot; @shortstringitem_double* \&quot;</span></code></pre></div>
+<p>For the long-form string, the rules are simpler, since many more characters are allowed inside this string without escaping</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a>-- adopted from language-python package</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true"></a></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true"></a>-- the only character that is not allowed ' or &quot;&quot; quotes depending upon the string wrapper used</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true"></a>$longstringchar  = [. \n] # [' \&quot;]</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true"></a>-- set up for single quoted long string</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true"></a>@longstringitem_single  =  $longstringchar | @stringescapeseq | @one_single_quote | @two_single_quotes | \&quot;</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true"></a></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true"></a>-- set up for double quoted long string</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true"></a>@longstringitem_double  =  $longstringchar | @stringescapeseq | @one_double_quote | @two_double_quotes | \'</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true"></a>@longstring      =  (''' @longstringitem_single* ''') | (\&quot;\&quot;\&quot; @longstringitem_double* \&quot;\&quot;\&quot;)</span></code></pre></div>
+<p>And, finally we put together both these defintions, to add support for a string literal</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true"></a>@stringliteral   =  (@stringprefix)* (@shortstring | @longstring)</span></code></pre></div>
+<p>We can follow the same reasoning for the byte-string rules.</p>
+<p>Finally, we update our action, to use the new rules we created above. This is how the <code>tokens</code> section looks after end of this iteration.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true"></a><span class="dt">tokens </span><span class="st">:-</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true"></a>       <span class="er">@</span>number {action Number}</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true"></a>       <span class="er">@</span>identifier {action Name}</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true"></a>       <span class="er">@</span>stringliteral | <span class="er">@</span>bytesliteral {action String}</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true"></a>       <span class="er">$</span>white+ ;     -- <span class="kw">this</span> ignores <span class="kw">new</span> lines as well</span></code></pre></div>
+<p>Compiling and running our example, we see:</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>L2.runLexer <span class="st">&quot;'test'&quot;</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">String</span>, token_string <span class="ot">=</span> <span class="st">&quot;'test'&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)}]</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Example2.Tokens.TokenInfo</span>]</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>L2.runLexer <span class="st">&quot;'''this this'''&quot;</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">String</span>, token_string <span class="ot">=</span> <span class="st">&quot;'''this this'''&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)}]</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Example2.Tokens.TokenInfo</span>]</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>L2.runLexer <span class="st">&quot;42_42.e+42_42&quot;</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Number</span>, token_string <span class="ot">=</span> <span class="st">&quot;42_42.e+42_42&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">0</span>,<span class="dv">0</span>)}]</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Example2.Tokens.TokenInfo</span>]</span></code></pre></div>
+<p>More examples can be found in test_fixtures of this iteration under <code>test/test_fixtures/2</code></p>
+<p><a name="capture_src_loc"></a></p>
+<h2 id="capture-the-source-location-of-tokens-example3">5. Capture The Source Location of Tokens <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example3">(Example3)</a></h2>
+<p>Up until now, you would have noticed the <code>start_pos</code> and <code>end_pos</code> values in the <code>TokenInfo</code> are set to (0, 0). We have not captured the location in the input string that was used to generate a particular <code>TokenInfo</code> value. We will fix that in this iteration.</p>
+<p>Before that let’s add support for special characters to our lexer.</p>
+<p>Thus far, our lexer only processes the <code>NAME</code>, <code>STRING</code> and <code>NUMBER</code> tokens. Let’s extend the definition of <code>Token</code> to capture all the special characters and their meaning as follows:</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true"></a><span class="co">-- Example3/Tokens.hs</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true"></a></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Token</span> <span class="ot">=</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true"></a>    <span class="op">.....</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true"></a></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Lpar</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Rpar</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Lsqb</span></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Rsqb</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Colon</span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Comma</span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Semi</span></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Plus</span></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true"></a>    <span class="op">|</span> <span class="dt">Minus</span></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true"></a></span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true"></a></span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true"></a>    <span class="op">....</span></span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true"></a>    <span class="op">...</span></span></code></pre></div>
+<p>We also add the corresponding change to the Example3/Lexer.x module.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true"></a>-- sample of operators we add to Example3/Lexer.x</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true"></a></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true"></a>      <span class="st">&quot;(&quot;</span>   { action Lpar }</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true"></a>      <span class="st">&quot;)&quot;</span>   { action Rpar }</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true"></a>      <span class="st">&quot;[&quot;</span>   { action Lsqb }</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true"></a>      <span class="st">&quot;]&quot;</span>   { action Rsqb }</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true"></a>      <span class="st">&quot;{&quot;</span>   { action Lbrace }</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true"></a>      <span class="st">&quot;}&quot;</span>   { action Rbrace }</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true"></a>      <span class="st">&quot;...&quot;</span> { action Ellipsis}</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true"></a>      <span class="st">&quot;-&gt;&quot;</span>  { action RArrow }</span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true"></a>      <span class="st">&quot;.&quot;</span>   { action Dot }</span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true"></a>      <span class="st">&quot;~&quot;</span>   { action Tilde }</span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true"></a>      <span class="st">&quot;+&quot;</span>   { action Plus }</span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true"></a>      <span class="st">&quot;-&quot;</span>   { action Minus }</span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true"></a>      <span class="st">&quot;**&quot;</span>  { action DoubleStar }</span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true"></a>      <span class="st">&quot;*&quot;</span>   { action Star }</span></code></pre></div>
+<p>With this our lexer supports expressions such as <code>x + y</code>, <code>abc = "xyz" + "def"</code>, <code>(a + b) + c</code> etc.</p>
+<p>Now, let’s get on to the task of capturing the source location information in our <code>TokenInfo</code> value. If you recollect in the <a href="#preparation">preparation</a> section, we added functions and types to work with the Alex runtime. We will be updating those functions here. First, we will update the <code>AlexInput</code> to capture the location as we update the <code>AlexInput</code> values inside the <code>alexGetByte</code> function.</p>
+<p>Here is what we need to do. First update <code>AlexInput</code>, so that it holds another attribute of type <code>AlexPosn</code>. We use this value to capture the starting of the location from where the next token was caputured (at which point the <code>action</code> function is called).</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true"></a><span class="dt">Example3</span><span class="op">/</span>LexerUtil.hs</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true"></a></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true"></a><span class="co">-- adapted from https://www.haskell.org/alex/doc/html/wrappers.html</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">AlexPosn</span> <span class="ot">=</span> <span class="dt">AlexPosn</span> <span class="op">!</span><span class="dt">Int</span>  <span class="co">-- absolute character offset</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true"></a>                       <span class="op">!</span><span class="dt">Int</span>  <span class="co">-- line number</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true"></a>                       <span class="op">!</span><span class="dt">Int</span>  <span class="co">-- column number</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true"></a>                       <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Eq</span>)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">AlexInput</span> <span class="ot">=</span> (<span class="dt">AlexPosn</span>,     <span class="co">-- current position,</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true"></a>                  <span class="dt">Char</span>,         <span class="co">-- previous char</span></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true"></a>                  [<span class="dt">Byte</span>],       <span class="co">-- rest of the bytes for the current char</span></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true"></a>                  <span class="dt">String</span>)       <span class="co">-- current input string</span></span></code></pre></div>
+<p>Next, we will extend the <code>alexGetByte</code> function, to update the the <code>AlexPosn</code> values, everytime a complete character has been read. To help with this, we use two helper functions. Note, that we just adopted this code from the wrapper Alex usually generates (but we are not using the wrappers in this tutorial).</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true"></a><span class="ot">alexGetByte ::</span> <span class="dt">AlexInput</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">Byte</span>,<span class="dt">AlexInput</span>)</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true"></a>alexGetByte (pn, c,b<span class="op">:</span>bs,s) <span class="ot">=</span> <span class="dt">Just</span> (b,(pn, c,bs,s))</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true"></a>alexGetByte (_, _,[],[]) <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true"></a>alexGetByte (p,_,[],c<span class="op">:</span>s)  <span class="ot">=</span> <span class="kw">let</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true"></a>  p' <span class="ot">=</span> alexMove p c</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true"></a>  <span class="kw">in</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true"></a>  <span class="kw">case</span> encode [c] <span class="kw">of</span></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true"></a>    b <span class="op">:</span> bs <span class="ot">-&gt;</span> p' <span class="ot">`seq`</span> <span class="dt">Just</span> (b, (p', c, bs, s))</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true"></a>    [] <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;Not byte returned for &quot;</span> <span class="op">++</span> <span class="fu">show</span> c</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true"></a></span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true"></a></span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true"></a>alexStartPos <span class="ot">=</span> <span class="dt">AlexPosn</span> <span class="dv">0</span> <span class="dv">1</span> <span class="dv">1</span></span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true"></a></span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true"></a><span class="co">-- adapter from code generated from Alex (remove change for \t, since Python counts this as offset=1)</span></span>
+<span id="cb32-15"><a href="#cb32-15" aria-hidden="true"></a><span class="ot">alexMove ::</span> <span class="dt">AlexPosn</span> <span class="ot">-&gt;</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> <span class="dt">AlexPosn</span></span>
+<span id="cb32-16"><a href="#cb32-16" aria-hidden="true"></a><span class="co">-- alexMove (AlexPn a l c) '\t' = AlexPosn (a+1)  l     ((c+8-1) `div` 8*8+1)  -- tabsize=8</span></span>
+<span id="cb32-17"><a href="#cb32-17" aria-hidden="true"></a>alexMove (<span class="dt">AlexPosn</span> a l _) <span class="ch">'\n'</span> <span class="ot">=</span> <span class="dt">AlexPosn</span> (a<span class="op">+</span><span class="dv">1</span>) (l<span class="op">+</span><span class="dv">1</span>)   <span class="dv">1</span></span>
+<span id="cb32-18"><a href="#cb32-18" aria-hidden="true"></a>alexMove (<span class="dt">AlexPosn</span> a l c) _    <span class="ot">=</span> <span class="dt">AlexPosn</span> (a<span class="op">+</span><span class="dv">1</span>)  l     (c<span class="op">+</span><span class="dv">1</span>)</span></code></pre></div>
+<p>And finally, we have to use this information, when we construct the <code>TokenInfo</code> value in our <code>action</code> method. Note, that we can use the starting value present in AlexPosn and the <code>inp_len</code>(length of currently captured token) to initialize the <code>start_pos</code> and <code>end_pos</code>.</p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true"></a><span class="ot">action ::</span> <span class="dt">AlexAction</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true"></a>action tok inp inp_len <span class="ot">=</span> <span class="kw">let</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true"></a>  (<span class="dt">AlexPosn</span> _ line col, c, _, s) <span class="ot">=</span> inp  <span class="co">-- Get the AlexPosn and use that info to calculate start, end positions</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true"></a>  <span class="kw">in</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true"></a>    <span class="dt">TokenInfo</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true"></a>    {</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true"></a>      token_type <span class="ot">=</span> tok,</span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true"></a>      token_string<span class="ot">=</span>T.pack (<span class="fu">take</span> inp_len s),</span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true"></a>      start_pos<span class="ot">=</span>(line, col),</span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true"></a>      end_pos<span class="ot">=</span>(line, col<span class="op">+</span>inp_len<span class="op">-</span><span class="dv">1</span>)</span>
+<span id="cb33-11"><a href="#cb33-11" aria-hidden="true"></a>    }</span></code></pre></div>
+<p>With these changes, all <code>TokenInfo</code> values that are constructed in the <code>action</code> function will also capture the source localtion.</p>
+<p>Here are some examples</p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span><span class="kw">import</span> <span class="dt">Example3.LexerRunner</span> <span class="kw">as</span> <span class="dt">L3</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>L3.runLexer <span class="st">&quot;a=b+c\nx=1&quot;</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;a&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">1</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">1</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Equal</span>, token_string <span class="ot">=</span> <span class="st">&quot;=&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">2</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">2</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, to</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true"></a>ken_string <span class="ot">=</span> <span class="st">&quot;b&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">3</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">3</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Plus</span>, token_string <span class="ot">=</span> <span class="st">&quot;+&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">4</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">4</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;c&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">5</span>), end</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true"></a>_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">5</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;x&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">2</span>,<span class="dv">1</span>), end_pos <span class="ot">=</span> (<span class="dv">2</span>,<span class="dv">1</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Equal</span>, token_string <span class="ot">=</span> <span class="st">&quot;=&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">2</span>,<span class="dv">2</span>), end_pos <span class="ot">=</span> (<span class="dv">2</span>,<span class="dv">2</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Number</span>, token_string <span class="ot">=</span> <span class="st">&quot;1&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">2</span>,<span class="dv">3</span>), end_pos <span class="ot">=</span> (<span class="dv">2</span>,<span class="dv">3</span>)}]</span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Example3.Tokens.TokenInfo</span>]</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span></span></code></pre></div>
+<p><a name="state_monad"></a></p>
+<h2 id="store-state-in-a-state-monad-example4">6. Store state in a State Monad <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example4">(Example4)</a></h2>
+<p>By now you might have noticed we are not handling newlines or identations yet. Python’s grammar is context-senstive and the lexer we constructed so far does not use the context of surrounding tokens yet. We did not have to store the state of our lexer up until now. But, to support the white-space sensitive requirements of the Python grammar we will have to preserve the state of the context.</p>
+<p>There are many approaches to solving this problem. One could entirely use the <code>start_code</code> machinery provided my Alex to achieve this. In this tutorial, we will adopt the State Monad machinery to store and retrieve the context. We will as earlier, use the code Alex would have generated if we had used the <a href="https://www.haskell.org/alex/doc/html/wrappers.html"><code>%wrapper monadUserState</code></a> directive. One could easily replace this code with the stock State monad.</p>
+<p>Let’s first think about all the information we would like to store in our state. You might have noticed that we are already implicitly carrying around state in the form of <code>AlexInput</code>, which gets passed to the <code>alexScan</code> function and gets updated in the <code>alexGetByte</code> function. So, may be we can abstract that information into our new state. We also need additional information we would like to store to handle newlines, indentations, empty new lines, lines with just comments etc. Later on we will also have to handle cases where <code>()</code> are used to express break up statements across multiple lines.</p>
+<p>With these requirements in mind, we could define the following 2 data structures. Again, the data structures are adopted heavily from the the <code>monadUserState</code> wrapper Alex provides. This can be easily replaced by a State monad with a custom structure. But, we stick to these definitions to understand Alex documentation and be consistent with other resources we find on the internet.</p>
+<p>First abstract the <code>AlexInput</code> and <code>AlexPosn</code> into our new state definition.</p>
+<div class="sourceCode" id="cb35"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true"></a></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true"></a><span class="co">-- Example4/LexerUtil.hs</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true"></a></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true"></a><span class="co">-- The Alex state monad</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true"></a><span class="co">-- This record encapsulates all of the `AlexInput` attributes and also contains the `AlexPosn`.</span></span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true"></a><span class="co">-- We also add the `AlexUserState` to this structure and we will use them later</span></span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">AlexState</span> <span class="ot">=</span> <span class="dt">AlexState</span> {</span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true"></a><span class="ot">        alex_pos ::</span> <span class="op">!</span><span class="dt">AlexPosn</span>,  <span class="co">-- position at current input location</span></span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true"></a><span class="ot">        alex_inp ::</span> <span class="dt">String</span>,     <span class="co">-- the current input</span></span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true"></a><span class="ot">        alex_chr ::</span> <span class="op">!</span><span class="dt">Char</span>,      <span class="co">-- the character before the input</span></span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true"></a><span class="ot">        alex_bytes ::</span> [<span class="dt">Byte</span>],   <span class="co">-- rest of the bytes for the current char</span></span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true"></a><span class="ot">        alex_scd ::</span> <span class="op">!</span><span class="dt">Int</span>,       <span class="co">-- the current startcode</span></span>
+<span id="cb35-13"><a href="#cb35-13" aria-hidden="true"></a>        <span class="co">-- Used in later iterations</span></span>
+<span id="cb35-14"><a href="#cb35-14" aria-hidden="true"></a><span class="ot">        alex_ust ::</span> <span class="dt">AlexUserState</span> <span class="co">-- AlexUserState will be defined in the user program</span></span>
+<span id="cb35-15"><a href="#cb35-15" aria-hidden="true"></a>    }</span>
+<span id="cb35-16"><a href="#cb35-16" aria-hidden="true"></a></span>
+<span id="cb35-17"><a href="#cb35-17" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">AlexUserState</span> <span class="ot">=</span> <span class="dt">AlexUserState</span> {</span>
+<span id="cb35-18"><a href="#cb35-18" aria-hidden="true"></a><span class="ot">       userStateStartCode ::</span> <span class="op">!</span><span class="dt">Int</span>,</span>
+<span id="cb35-19"><a href="#cb35-19" aria-hidden="true"></a><span class="ot">       userStateIndentStack ::</span> [<span class="dt">Int</span>],</span>
+<span id="cb35-20"><a href="#cb35-20" aria-hidden="true"></a><span class="ot">       userStatePendingTokens ::</span> [<span class="dt">TokenInfo</span>],</span>
+<span id="cb35-21"><a href="#cb35-21" aria-hidden="true"></a><span class="ot">       userStateParenStack::</span> [<span class="dt">Token</span>],</span>
+<span id="cb35-22"><a href="#cb35-22" aria-hidden="true"></a><span class="ot">       userStatePrevComment ::</span> <span class="dt">Bool</span>,</span>
+<span id="cb35-23"><a href="#cb35-23" aria-hidden="true"></a><span class="ot">       userStatePrevToken ::</span> <span class="dt">Token</span></span>
+<span id="cb35-24"><a href="#cb35-24" aria-hidden="true"></a>     }</span>
+<span id="cb35-25"><a href="#cb35-25" aria-hidden="true"></a>     <span class="kw">deriving</span> (<span class="dt">Show</span>)</span></code></pre></div>
+<p>We will now define a new type <code>Alex a</code> and the required monadic interfaces for that.</p>
+<div class="sourceCode" id="cb36"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true"></a><span class="co">-- Example4/LexerUtil.hs</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true"></a></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">AlexState</span> <span class="ot">=</span> <span class="dt">AlexState</span> {</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true"></a><span class="ot">        alex_pos ::</span> <span class="op">!</span><span class="dt">AlexPosn</span>,  <span class="co">-- position at current input location</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true"></a><span class="ot">        alex_inp ::</span> <span class="dt">String</span>,     <span class="co">-- the current input</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true"></a><span class="ot">        alex_chr ::</span> <span class="op">!</span><span class="dt">Char</span>,      <span class="co">-- the character before the input</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true"></a><span class="ot">        alex_bytes ::</span> [<span class="dt">Byte</span>],   <span class="co">-- rest of the bytes for the current char</span></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true"></a><span class="ot">        alex_scd ::</span> <span class="op">!</span><span class="dt">Int</span>,       <span class="co">-- the current startcode</span></span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true"></a>    }</span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true"></a></span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true"></a><span class="kw">newtype</span> <span class="dt">Alex</span> a <span class="ot">=</span> <span class="dt">Alex</span> {<span class="ot"> unAlex ::</span> <span class="dt">AlexState</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> (<span class="dt">AlexState</span>, a) }</span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true"></a></span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">Alex</span> <span class="kw">where</span></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true"></a>  <span class="fu">fmap</span> f a <span class="ot">=</span> <span class="dt">Alex</span> <span class="op">$</span> \s <span class="ot">-&gt;</span> <span class="kw">case</span> unAlex a s <span class="kw">of</span></span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true"></a>                            <span class="dt">Left</span> msg <span class="ot">-&gt;</span> <span class="dt">Left</span> msg</span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true"></a>                            <span class="dt">Right</span> (s', a') <span class="ot">-&gt;</span> <span class="dt">Right</span> (s', f a')</span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true"></a></span>
+<span id="cb36-18"><a href="#cb36-18" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Applicative</span> <span class="dt">Alex</span> <span class="kw">where</span></span>
+<span id="cb36-19"><a href="#cb36-19" aria-hidden="true"></a>  <span class="fu">pure</span> a   <span class="ot">=</span> <span class="dt">Alex</span> <span class="op">$</span> \s <span class="ot">-&gt;</span> <span class="dt">Right</span> (s, a)</span>
+<span id="cb36-20"><a href="#cb36-20" aria-hidden="true"></a>  fa <span class="op">&lt;*&gt;</span> a <span class="ot">=</span> <span class="dt">Alex</span> <span class="op">$</span> \s <span class="ot">-&gt;</span> <span class="kw">case</span> unAlex fa s <span class="kw">of</span></span>
+<span id="cb36-21"><a href="#cb36-21" aria-hidden="true"></a>                            <span class="dt">Left</span> msg <span class="ot">-&gt;</span> <span class="dt">Left</span> msg</span>
+<span id="cb36-22"><a href="#cb36-22" aria-hidden="true"></a>                            <span class="dt">Right</span> (s', f) <span class="ot">-&gt;</span> <span class="kw">case</span> unAlex a s' <span class="kw">of</span></span>
+<span id="cb36-23"><a href="#cb36-23" aria-hidden="true"></a>                                               <span class="dt">Left</span> msg <span class="ot">-&gt;</span> <span class="dt">Left</span> msg</span>
+<span id="cb36-24"><a href="#cb36-24" aria-hidden="true"></a>                                               <span class="dt">Right</span> (s'', b) <span class="ot">-&gt;</span> <span class="dt">Right</span> (s'', f b)</span>
+<span id="cb36-25"><a href="#cb36-25" aria-hidden="true"></a></span>
+<span id="cb36-26"><a href="#cb36-26" aria-hidden="true"></a><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">Alex</span> <span class="kw">where</span></span>
+<span id="cb36-27"><a href="#cb36-27" aria-hidden="true"></a>  m <span class="op">&gt;&gt;=</span> k  <span class="ot">=</span> <span class="dt">Alex</span> <span class="op">$</span> \s <span class="ot">-&gt;</span> <span class="kw">case</span> unAlex m s <span class="kw">of</span></span>
+<span id="cb36-28"><a href="#cb36-28" aria-hidden="true"></a>                                <span class="dt">Left</span> msg <span class="ot">-&gt;</span> <span class="dt">Left</span> msg</span>
+<span id="cb36-29"><a href="#cb36-29" aria-hidden="true"></a>                                <span class="dt">Right</span> (s',a) <span class="ot">-&gt;</span> unAlex (k a) s'</span>
+<span id="cb36-30"><a href="#cb36-30" aria-hidden="true"></a>  <span class="fu">return</span> <span class="ot">=</span> <span class="fu">pure</span></span></code></pre></div>
+<p>We will also add a getter/setter for this state monad. We will use these functions to get/set the <code>AlexInput</code> and <code>AlexPosn</code> values.</p>
+<div class="sourceCode" id="cb37"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true"></a><span class="co">-- needed by Alex</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true"></a><span class="ot">alexError ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Alex</span> a</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true"></a>alexError message <span class="ot">=</span> <span class="dt">Alex</span> <span class="op">$</span> <span class="fu">const</span> <span class="op">$</span> <span class="dt">Left</span> message</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true"></a></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true"></a><span class="ot">alexGetInput ::</span> <span class="dt">Alex</span> <span class="dt">AlexInput</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true"></a>alexGetInput</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true"></a> <span class="ot">=</span> <span class="dt">Alex</span> <span class="op">$</span> \s<span class="op">@</span><span class="dt">AlexState</span>{alex_pos<span class="ot">=</span>pos,alex_chr<span class="ot">=</span>c,alex_bytes<span class="ot">=</span>bs,alex_inp<span class="ot">=</span>inp__} <span class="ot">-&gt;</span></span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true"></a>        <span class="dt">Right</span> (s, (pos,c,bs,inp__))</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true"></a></span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true"></a><span class="ot">alexSetInput ::</span> <span class="dt">AlexInput</span> <span class="ot">-&gt;</span> <span class="dt">Alex</span> ()</span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true"></a>alexSetInput (pos,c,bs,inp)</span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true"></a> <span class="ot">=</span> <span class="dt">Alex</span> <span class="op">$</span> \s <span class="ot">-&gt;</span> <span class="dt">Right</span> (s{alex_pos<span class="ot">=</span>pos,alex_chr<span class="ot">=</span>c,alex_bytes<span class="ot">=</span>bs,alex_inp<span class="ot">=</span>inp}, ())</span></code></pre></div>
+<p>Now, we update our <code>lexer</code> function to use the state monad. Note, that we break up the original version from Example3. The <code>lexer</code> function first gets the <code>inp</code> state and calls <code>alexScan</code>. After <code>alexScan</code> returns, we update the <code>inp</code> state and then call the action function. This is where we will capture the state between each call to <code>alexScan</code> functions.</p>
+<p>Since, the <code>lexer</code> runs only once, we need to recursively call this <code>lexer</code> until we reach <code>EOF</code> token. The recursion is handled in the <code>lexerFold</code> function. The <code>lexerFold</code> function recursively invokes the <code>lexer</code> until it detects the <code>EOF</code> token and then returns all the collected <code>TokenInfo</code> values.</p>
+<div class="sourceCode" id="cb38"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true"></a></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true"></a><span class="ot">lexer ::</span> <span class="dt">Alex</span> <span class="dt">TokenInfo</span>  <span class="co">-- This is our state monad</span></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true"></a>lexer <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true"></a>      inp <span class="ot">&lt;-</span> alexGetInput</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true"></a>      <span class="kw">case</span> alexScan inp <span class="dv">0</span> <span class="kw">of</span></span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true"></a>        <span class="dt">AlexEOF</span> <span class="ot">-&gt;</span> alexEOF</span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true"></a>        <span class="dt">AlexError</span> ((<span class="dt">AlexPosn</span> _ line column),_,_,_) <span class="ot">-&gt;</span> alexError <span class="op">$</span> <span class="st">&quot;lexical error at line &quot;</span> <span class="op">++</span> (<span class="fu">show</span> line) <span class="op">++</span> <span class="st">&quot;, column &quot;</span> <span class="op">++</span> (<span class="fu">show</span> column)</span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true"></a>        <span class="dt">AlexSkip</span>  inp' _len <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true"></a>          alexSetInput inp'</span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true"></a>          lexer <span class="co">-- skip and loop around</span></span>
+<span id="cb38-11"><a href="#cb38-11" aria-hidden="true"></a>        <span class="dt">AlexToken</span> inp' len action <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb38-12"><a href="#cb38-12" aria-hidden="true"></a>          alexSetInput inp'</span>
+<span id="cb38-13"><a href="#cb38-13" aria-hidden="true"></a>          action inp len</span>
+<span id="cb38-14"><a href="#cb38-14" aria-hidden="true"></a></span>
+<span id="cb38-15"><a href="#cb38-15" aria-hidden="true"></a><span class="co">-- adopted from language-python</span></span>
+<span id="cb38-16"><a href="#cb38-16" aria-hidden="true"></a><span class="ot">lexerFold ::</span> <span class="dt">Alex</span> [<span class="dt">TokenInfo</span>]</span>
+<span id="cb38-17"><a href="#cb38-17" aria-hidden="true"></a>lexerFold <span class="ot">=</span> loop []</span>
+<span id="cb38-18"><a href="#cb38-18" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb38-19"><a href="#cb38-19" aria-hidden="true"></a>    loop toks <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb38-20"><a href="#cb38-20" aria-hidden="true"></a>      token_info<span class="op">@</span><span class="dt">TokenInfo</span> {<span class="op">..</span>} <span class="ot">&lt;-</span> lexer</span>
+<span id="cb38-21"><a href="#cb38-21" aria-hidden="true"></a>      <span class="kw">case</span> token_type <span class="kw">of</span></span>
+<span id="cb38-22"><a href="#cb38-22" aria-hidden="true"></a>        <span class="dt">EOF</span> <span class="ot">-&gt;</span> <span class="fu">return</span> <span class="op">$</span> L.reverse toks</span>
+<span id="cb38-23"><a href="#cb38-23" aria-hidden="true"></a>        _ <span class="ot">-&gt;</span> loop (token_info <span class="op">:</span> toks)</span>
+<span id="cb38-24"><a href="#cb38-24" aria-hidden="true"></a></span>
+<span id="cb38-25"><a href="#cb38-25" aria-hidden="true"></a><span class="co">-- from generated Alex file</span></span>
+<span id="cb38-26"><a href="#cb38-26" aria-hidden="true"></a><span class="ot">runAlex ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Alex</span> a <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">String</span> a</span>
+<span id="cb38-27"><a href="#cb38-27" aria-hidden="true"></a>runAlex inp (<span class="dt">Alex</span> f) <span class="ot">=</span></span>
+<span id="cb38-28"><a href="#cb38-28" aria-hidden="true"></a>  <span class="kw">case</span> f</span>
+<span id="cb38-29"><a href="#cb38-29" aria-hidden="true"></a>    ( <span class="dt">AlexState</span></span>
+<span id="cb38-30"><a href="#cb38-30" aria-hidden="true"></a>        { alex_pos <span class="ot">=</span> alexStartPos,</span>
+<span id="cb38-31"><a href="#cb38-31" aria-hidden="true"></a>          alex_inp <span class="ot">=</span> inp,</span>
+<span id="cb38-32"><a href="#cb38-32" aria-hidden="true"></a>          alex_chr <span class="ot">=</span> <span class="ch">'\n'</span>,</span>
+<span id="cb38-33"><a href="#cb38-33" aria-hidden="true"></a>          alex_bytes <span class="ot">=</span> [],</span>
+<span id="cb38-34"><a href="#cb38-34" aria-hidden="true"></a>          alex_ust <span class="ot">=</span> alexInitUserState,</span>
+<span id="cb38-35"><a href="#cb38-35" aria-hidden="true"></a>          alex_scd <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb38-36"><a href="#cb38-36" aria-hidden="true"></a>        }</span>
+<span id="cb38-37"><a href="#cb38-37" aria-hidden="true"></a>    ) <span class="kw">of</span></span>
+<span id="cb38-38"><a href="#cb38-38" aria-hidden="true"></a>    <span class="dt">Left</span> msg <span class="ot">-&gt;</span> <span class="dt">Left</span> msg</span>
+<span id="cb38-39"><a href="#cb38-39" aria-hidden="true"></a>    <span class="dt">Right</span> (_, a) <span class="ot">-&gt;</span> <span class="dt">Right</span> a</span>
+<span id="cb38-40"><a href="#cb38-40" aria-hidden="true"></a></span>
+<span id="cb38-41"><a href="#cb38-41" aria-hidden="true"></a>}</span></code></pre></div>
+<p>We also update the <code>action</code> function to now return <code>Alex TokenInfo</code> instead of <code>TokenInfo</code>. Note, that we also adjusted the <code>start_pos</code> and <code>end_pos</code> values to align with the values produced by the Python tokenizer.</p>
+<div class="sourceCode" id="cb39"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true"></a></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true"></a><span class="co">-- helper function to construct the TokenInfo value</span></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true"></a><span class="co">-- We will add more logic in this function later</span></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true"></a><span class="ot">constructToken ::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> (<span class="dt">AlexPosn</span>, b1, c1, <span class="dt">String</span>) <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">AlexPosn</span>, b2, c2, d) <span class="ot">-&gt;</span> <span class="dt">TokenInfo</span></span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true"></a>constructToken tok inp inp_len n_inp <span class="ot">=</span> <span class="kw">let</span></span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true"></a>    (<span class="dt">AlexPosn</span> _ line col, _, _,s) <span class="ot">=</span> inp</span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true"></a>    (<span class="dt">AlexPosn</span> _ nline ncol, _c, _rest, _s) <span class="ot">=</span> n_inp <span class="co">-- new input in state</span></span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true"></a></span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true"></a>    start_pos <span class="ot">=</span> (line, col <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true"></a>    tok_str <span class="ot">=</span> T.pack <span class="op">$</span> <span class="fu">take</span> inp_len s</span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true"></a>    end_pos <span class="ot">=</span> (nline, ncol <span class="op">-</span><span class="dv">1</span>)</span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true"></a>    <span class="kw">in</span></span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true"></a>      <span class="dt">TokenInfo</span> {</span>
+<span id="cb39-14"><a href="#cb39-14" aria-hidden="true"></a>              token_type<span class="ot">=</span>tok,</span>
+<span id="cb39-15"><a href="#cb39-15" aria-hidden="true"></a>              token_string<span class="ot">=</span>tok_str,</span>
+<span id="cb39-16"><a href="#cb39-16" aria-hidden="true"></a>              start_pos<span class="ot">=</span>start_pos,</span>
+<span id="cb39-17"><a href="#cb39-17" aria-hidden="true"></a>              end_pos<span class="ot">=</span>end_pos</span>
+<span id="cb39-18"><a href="#cb39-18" aria-hidden="true"></a>              }</span>
+<span id="cb39-19"><a href="#cb39-19" aria-hidden="true"></a></span>
+<span id="cb39-20"><a href="#cb39-20" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">AlexAction</span> result <span class="ot">=</span> <span class="dt">AlexInput</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Alex</span> result</span>
+<span id="cb39-21"><a href="#cb39-21" aria-hidden="true"></a></span>
+<span id="cb39-22"><a href="#cb39-22" aria-hidden="true"></a><span class="co">-- Update action to run inside the Alex state</span></span>
+<span id="cb39-23"><a href="#cb39-23" aria-hidden="true"></a><span class="ot">action ::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">AlexAction</span> <span class="dt">TokenInfo</span></span>
+<span id="cb39-24"><a href="#cb39-24" aria-hidden="true"></a>action tok inp inp_len <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb39-25"><a href="#cb39-25" aria-hidden="true"></a>       <span class="co">-- this has new updated input</span></span>
+<span id="cb39-26"><a href="#cb39-26" aria-hidden="true"></a>       n_inp<span class="op">@</span>(<span class="dt">AlexPosn</span> _ nline ncol,c, rest,s) <span class="ot">&lt;-</span> alexGetInput</span>
+<span id="cb39-27"><a href="#cb39-27" aria-hidden="true"></a>       <span class="fu">return</span> <span class="op">$</span> constructToken tok inp inp_len n_inp</span></code></pre></div>
+<p>With these changes, we have completed abstracted away <code>AlexInput</code> and <code>AlexPosn</code> into the State monad, add used a custom user state which will will use soon, and also update the <code>lexer</code> to thread the state monad through the <code>alexScan</code> function until we see the <code>EOF</code> token.</p>
+<p>Let’s now test our changes in GHCI.</p>
+<div class="sourceCode" id="cb40"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span><span class="kw">import</span> <span class="dt">Example4.LexerRunner</span> <span class="kw">as</span> <span class="dt">L4</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>L4.runLexer <span class="st">&quot;a=b+c&quot;</span></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true"></a><span class="dt">Right</span> [<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;a&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">0</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">1</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Equal</span>, token_string <span class="ot">=</span> <span class="st">&quot;=&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">1</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">2</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;b&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">2</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">3</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Plus</span>, token_string <span class="ot">=</span> <span class="st">&quot;+&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">3</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">4</span>)},<span class="dt">TokenInfo</span> {token_type <span class="ot">=</span> <span class="dt">Name</span>, token_string <span class="ot">=</span> <span class="st">&quot;c&quot;</span>, start_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">4</span>), end_pos <span class="ot">=</span> (<span class="dv">1</span>,<span class="dv">5</span>)}]</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">Either</span> <span class="dt">String</span> [<span class="dt">Example4.Tokens.TokenInfo</span>]</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span></span></code></pre></div>
+<p><a name="final"></a></p>
+<h2 id="supporting-whitespace-context-and-having-a-full-lexer-example5">7. Supporting Whitespace context (and having a Full Lexer!) <a href="https://github.com/gdevanla/wya-lexer/tree/main/src/Example5">(Example5)</a></h2>
+<p>It has been interesting so far. But, we are not done yet. This probably will be the most difficult task to implement. We had to go through the process of setting up the state monad just to accomplish this task we have at hand. Let’s look at some examples on how the Python tokenizer behaves when it comes to handling whitespaces.</p>
+<p><a name="complexity"></a></p>
+<h4 id="the-complexity-of-newlines-indents-and-dedents">7.1 The Complexity of Newlines, Indents and Dedents</h4>
+<div class="sourceCode" id="cb41"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true"></a>In [<span class="dv">55</span>]: <span class="im">import</span> tokenize</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true"></a>    ...:</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true"></a>    ...: z <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true"></a><span class="st">    ...: if f:</span></span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true"></a><span class="st">    ...:     x</span></span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true"></a><span class="st">    ...:         y</span></span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true"></a><span class="st">    ...: &quot;&quot;&quot;</span></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true"></a>    ...:</span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true"></a>    ...:</span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true"></a>    ...: <span class="bu">list</span>(tokenize.generate_tokens(io.StringIO(z).readline))</span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true"></a>Out[<span class="dv">55</span>]:</span>
+<span id="cb41-12"><a href="#cb41-12" aria-hidden="true"></a>[TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">61</span> (NL), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">1</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">1</span>, <span class="dv">1</span>), line<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-13"><a href="#cb41-13" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'if'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">2</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-14"><a href="#cb41-14" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'f'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">3</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">4</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-15"><a href="#cb41-15" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">54</span> (OP), string<span class="op">=</span><span class="st">':'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">4</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">5</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-16"><a href="#cb41-16" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">4</span> (NEWLINE), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">5</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">6</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-17"><a href="#cb41-17" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">5</span> (INDENT), string<span class="op">=</span><span class="st">'    '</span>, start<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">4</span>), line<span class="op">=</span><span class="st">'    x </span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-18"><a href="#cb41-18" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'x'</span>, start<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">4</span>), end<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">5</span>), line<span class="op">=</span><span class="st">'    x </span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-19"><a href="#cb41-19" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">4</span> (NEWLINE), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">6</span>), end<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">7</span>), line<span class="op">=</span><span class="st">'    x </span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-20"><a href="#cb41-20" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">5</span> (INDENT), string<span class="op">=</span><span class="st">'        '</span>, start<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">8</span>), line<span class="op">=</span><span class="st">'        y</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-21"><a href="#cb41-21" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'y'</span>, start<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">8</span>), end<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">9</span>), line<span class="op">=</span><span class="st">'        y</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-22"><a href="#cb41-22" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">4</span> (NEWLINE), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">9</span>), end<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">10</span>), line<span class="op">=</span><span class="st">'        y</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb41-23"><a href="#cb41-23" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">6</span> (DEDENT), string<span class="op">=</span><span class="st">''</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">0</span>), line<span class="op">=</span><span class="st">''</span>),</span>
+<span id="cb41-24"><a href="#cb41-24" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">6</span> (DEDENT), string<span class="op">=</span><span class="st">''</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">0</span>), line<span class="op">=</span><span class="st">''</span>),</span>
+<span id="cb41-25"><a href="#cb41-25" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">0</span> (ENDMARKER), string<span class="op">=</span><span class="st">''</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">0</span>), line<span class="op">=</span><span class="st">''</span>)]</span></code></pre></div>
+<p>You will notice that we have <code>NEWLINE</code> followed by <code>INDENT</code> and then finally we also <code>DEDENT</code> (twice), so that <code>start_pos</code> and <code>end_pos</code> end up at column 0. Therefore, for us to accomplish this task, we will have to capture the location we see a <code>newline</code> followed by <code>whitespaces</code>. We will do that in the next section.</p>
+<p><a name="capture_newline"></a></p>
+<h4 id="capture-newlines-indents-and-dedents">7.2 Capture Newlines, INDENTs and DEDENTs</h4>
+<p>We first add a new rule to the lexer</p>
+<div class="sourceCode" id="cb42"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true"></a>-- Example5/Lexer.x</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true"></a></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true"></a>       \n<span class="er">$</span>white* {startWhite}</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true"></a>       <span class="er">$</span>white+ ;   -- ignote <span class="kw">this</span> since we only care up significant white spaces (leading white spaces)</span></code></pre></div>
+<p>Now we will implement the <code>startWhite</code> action to handle this rule. To keep track of all indentations we make use of the <code>userStateIndentStack</code> attribute of the <code>AlexUserState</code> record. The initialization function has the value set to <code>[1]</code> and we set the <code>userStatePendingTokens</code> to an empty list. When the <code>startWhite</code> action is called we perform the following actions that is described after the code listing.</p>
+<p>Here is the implementation of the <code>whiteSpace</code> action. We will break down this code and understand what its doing below.</p>
+<div class="sourceCode" id="cb43"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true"></a><span class="ot">startWhite::</span> <span class="dt">AlexAction</span> <span class="dt">TokenInfo</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true"></a>startWhite inp inp_len <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true"></a>     is <span class="ot">&lt;-</span> userStateIndentStack <span class="op">&lt;$&gt;</span> alexGetUserState</span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true"></a>     <span class="kw">let</span> cur <span class="ot">=</span> <span class="kw">case</span> is <span class="kw">of</span></span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true"></a>           c<span class="op">:</span>_ <span class="ot">-&gt;</span> c</span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true"></a>           _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;Indentation stack is not set, alteast one element should be present. Empty list found&quot;</span></span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true"></a></span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true"></a>     <span class="kw">let</span> (<span class="dt">AlexPosn</span> _ line _, _, _,s) <span class="ot">=</span> inp</span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true"></a>     <span class="co">-- new input</span></span>
+<span id="cb43-10"><a href="#cb43-10" aria-hidden="true"></a>     n_inp<span class="op">@</span>(<span class="dt">AlexPosn</span> _ nline ncol, _, _, ns) <span class="ot">&lt;-</span> alexGetInput</span>
+<span id="cb43-11"><a href="#cb43-11" aria-hidden="true"></a></span>
+<span id="cb43-12"><a href="#cb43-12" aria-hidden="true"></a>     newline_tok <span class="ot">&lt;-</span> newLineAction inp inp_len</span>
+<span id="cb43-13"><a href="#cb43-13" aria-hidden="true"></a>     userState <span class="ot">&lt;-</span> alexGetUserState</span>
+<span id="cb43-14"><a href="#cb43-14" aria-hidden="true"></a></span>
+<span id="cb43-15"><a href="#cb43-15" aria-hidden="true"></a>     <span class="kw">if</span>  <span class="op">|</span> <span class="dt">True</span> <span class="ot">-&gt;</span> <span class="kw">do</span>    <span class="co">-- this if condition here is a placeholder which we will update later</span></span>
+<span id="cb43-16"><a href="#cb43-16" aria-hidden="true"></a>          <span class="co">-- at this point we have an indentation, but this</span></span>
+<span id="cb43-17"><a href="#cb43-17" aria-hidden="true"></a>          <span class="co">-- indentation could be starting on different line based on</span></span>
+<span id="cb43-18"><a href="#cb43-18" aria-hidden="true"></a>          <span class="co">-- preceding empty lines. For all precedin empty lines we</span></span>
+<span id="cb43-19"><a href="#cb43-19" aria-hidden="true"></a>          <span class="co">-- will insert an NL token</span></span>
+<span id="cb43-20"><a href="#cb43-20" aria-hidden="true"></a>          <span class="kw">let</span> parts <span class="ot">=</span> L.map T.length <span class="op">.</span> T.splitOn <span class="st">&quot;\n&quot;</span> <span class="op">.</span> T.pack <span class="op">.</span> <span class="fu">take</span> inp_len <span class="op">$</span> s</span>
+<span id="cb43-21"><a href="#cb43-21" aria-hidden="true"></a>          <span class="kw">let</span> pos <span class="ot">=</span> L.last parts <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb43-22"><a href="#cb43-22" aria-hidden="true"></a>          <span class="kw">let</span> nl_tokens <span class="ot">=</span> constructNLTokens</span>
+<span id="cb43-23"><a href="#cb43-23" aria-hidden="true"></a>                          <span class="co">-- the first new line will be returned at</span></span>
+<span id="cb43-24"><a href="#cb43-24" aria-hidden="true"></a>                          <span class="co">-- end of this function</span></span>
+<span id="cb43-25"><a href="#cb43-25" aria-hidden="true"></a>                          (line <span class="op">+</span> <span class="dv">1</span>)</span>
+<span id="cb43-26"><a href="#cb43-26" aria-hidden="true"></a>                          <span class="co">-- [&quot;\n&quot;, ....., &quot;&quot;] therefore adjust for</span></span>
+<span id="cb43-27"><a href="#cb43-27" aria-hidden="true"></a>                          <span class="co">-- the 2 items (first \n and last</span></span>
+<span id="cb43-28"><a href="#cb43-28" aria-hidden="true"></a>                          <span class="co">-- non-newline)</span></span>
+<span id="cb43-29"><a href="#cb43-29" aria-hidden="true"></a>                          (L.length parts <span class="op">-</span> <span class="dv">2</span>)</span>
+<span id="cb43-30"><a href="#cb43-30" aria-hidden="true"></a>          when (pos <span class="op">&gt;</span> cur) <span class="op">$</span></span>
+<span id="cb43-31"><a href="#cb43-31" aria-hidden="true"></a>                 alexSetUserState <span class="op">$</span> userState {</span>
+<span id="cb43-32"><a href="#cb43-32" aria-hidden="true"></a>            userStateIndentStack <span class="ot">=</span> pos<span class="op">:</span>is,</span>
+<span id="cb43-33"><a href="#cb43-33" aria-hidden="true"></a>            <span class="co">-- takes care of adding the preceding new lines as well</span></span>
+<span id="cb43-34"><a href="#cb43-34" aria-hidden="true"></a>            userStatePendingTokens<span class="ot">=</span>nl_tokens <span class="op">++</span> [constructToken <span class="dt">Indent</span> inp inp_len n_inp]}</span>
+<span id="cb43-35"><a href="#cb43-35" aria-hidden="true"></a>          when (pos <span class="op">&lt;</span> cur) <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb43-36"><a href="#cb43-36" aria-hidden="true"></a>                 <span class="kw">let</span> (pre, post) <span class="ot">=</span> <span class="fu">span</span> (<span class="op">&gt;</span> pos) is</span>
+<span id="cb43-37"><a href="#cb43-37" aria-hidden="true"></a>                 <span class="kw">let</span> top <span class="ot">=</span> <span class="kw">case</span> post <span class="kw">of</span></span>
+<span id="cb43-38"><a href="#cb43-38" aria-hidden="true"></a>                       t<span class="op">:</span>_ <span class="ot">-&gt;</span> t</span>
+<span id="cb43-39"><a href="#cb43-39" aria-hidden="true"></a>                       [] <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="fu">unwords</span> [<span class="st">&quot;Invalid indent with cur= &quot;</span>, <span class="fu">show</span> cur]</span>
+<span id="cb43-40"><a href="#cb43-40" aria-hidden="true"></a>                 <span class="kw">if</span> pos <span class="op">==</span> top <span class="kw">then</span></span>
+<span id="cb43-41"><a href="#cb43-41" aria-hidden="true"></a>                    alexSetUserState <span class="op">$</span> userState {</span>
+<span id="cb43-42"><a href="#cb43-42" aria-hidden="true"></a>                          userStateIndentStack <span class="ot">=</span> post,</span>
+<span id="cb43-43"><a href="#cb43-43" aria-hidden="true"></a>                          userStatePendingTokens<span class="ot">=</span>nl_tokens <span class="op">++</span> <span class="fu">map</span> (<span class="fu">const</span> (constructToken <span class="dt">Dedent</span> inp inp_len n_inp)) pre}</span>
+<span id="cb43-44"><a href="#cb43-44" aria-hidden="true"></a>                 <span class="kw">else</span></span>
+<span id="cb43-45"><a href="#cb43-45" aria-hidden="true"></a>                   <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;Invalid indents : &quot;</span> <span class="op">++</span> <span class="st">&quot;pos = &quot;</span> <span class="op">++</span> <span class="fu">show</span> pos <span class="op">++</span> <span class="st">&quot; top= &quot;</span> <span class="op">++</span> <span class="fu">show</span> top <span class="op">++</span> <span class="st">&quot;userState = &quot;</span> <span class="op">++</span> <span class="fu">show</span> userState <span class="op">++</span> <span class="st">&quot;pre = &quot;</span> <span class="op">++</span> <span class="fu">show</span> pre <span class="op">++</span> <span class="st">&quot;post = &quot;</span> <span class="op">++</span> <span class="fu">show</span> post</span>
+<span id="cb43-46"><a href="#cb43-46" aria-hidden="true"></a>          when (pos <span class="op">==</span> cur) <span class="op">$</span></span>
+<span id="cb43-47"><a href="#cb43-47" aria-hidden="true"></a>                  alexSetUserState <span class="op">$</span> userState {</span>
+<span id="cb43-48"><a href="#cb43-48" aria-hidden="true"></a>                  userStatePendingTokens<span class="ot">=</span>nl_tokens}</span>
+<span id="cb43-49"><a href="#cb43-49" aria-hidden="true"></a></span>
+<span id="cb43-50"><a href="#cb43-50" aria-hidden="true"></a>          <span class="co">-- set prev token</span></span>
+<span id="cb43-51"><a href="#cb43-51" aria-hidden="true"></a>          alexSetPrevToken newline_tok</span>
+<span id="cb43-52"><a href="#cb43-52" aria-hidden="true"></a>          <span class="fu">return</span> (constructToken newline_tok inp inp_len n_inp)</span></code></pre></div>
+<ol type="1">
+<li><code>when (pos &gt; cur)</code> : This happens when we encounter new indentations. We check to see if the indentation is further out from the value at the top of the <code>userStateIndentStack</code>. If yes, we add the new position to the stack. We also add the <code>INDENT</code> token to the stack, since after we yield a NEWLINE token, we need to yield all the tokens in the <code>userStatePendingTokens</code> stack. By adding the <code>INDENT</code> tokens to this stack we achieve that. The <code>lexerLoop</code> generates the pending tokens by popping from the pending stack before calling the <code>lexer</code> to fetch the next token.</li>
+<li><code>when (pos &lt; cur)</code> : This condition is true when we encounter an outer indent. Now, we could have <code>dedented</code> out by more than one level of indentation. Therefore, we need to compute the number of <code>DEDENT</code> tokens that needs to be added to into the <code>pending</code> stack.</li>
+<li><code>where (pos == cur) : When the indentation level has not changed, we still have to introduce any</code>NL` tokens that may be needed for empty lines within the same indentation level.</li>
+</ol>
+<p>There is one other subtle condition we need to handle. You will notice that we are constructing a specified number of <code>nl_tokens</code>. This is to support the behaviour of the original Python tokenizer that introduces <code>NL</code> tokens for empty new lines. The <code>empty</code> new lines do not get <code>INDENTED</code>.</p>
+<p>Here is another example of the Python tokenizer where you will notice 2 <code>NL</code> tokens before the <code>INDENT</code> token. That is the reason behind appending the extra <code>NL</code> tokens across all the conditions encountered above.</p>
+<div class="sourceCode" id="cb44"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true"></a>In [<span class="dv">57</span>]: <span class="im">import</span> tokenize</span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true"></a>    ...:</span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true"></a>    ...: z <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true"></a><span class="st">    ...: if f:</span></span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true"></a><span class="st">    ...:</span></span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true"></a><span class="st">    ...:</span></span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true"></a><span class="st">    ...:     x</span></span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true"></a><span class="st">    ...: &quot;&quot;&quot;</span></span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true"></a>    ...:</span>
+<span id="cb44-10"><a href="#cb44-10" aria-hidden="true"></a>    ...:</span>
+<span id="cb44-11"><a href="#cb44-11" aria-hidden="true"></a>    ...: <span class="bu">list</span>(tokenize.generate_tokens(io.StringIO(z).readline))</span>
+<span id="cb44-12"><a href="#cb44-12" aria-hidden="true"></a>Out[<span class="dv">57</span>]:</span>
+<span id="cb44-13"><a href="#cb44-13" aria-hidden="true"></a>[TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">61</span> (NL), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">1</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">1</span>, <span class="dv">1</span>), line<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-14"><a href="#cb44-14" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'if'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">2</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-15"><a href="#cb44-15" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'f'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">3</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">4</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-16"><a href="#cb44-16" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">54</span> (OP), string<span class="op">=</span><span class="st">':'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">4</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">5</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-17"><a href="#cb44-17" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">4</span> (NEWLINE), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">5</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">6</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-18"><a href="#cb44-18" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">61</span> (NL), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">1</span>), line<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-19"><a href="#cb44-19" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">61</span> (NL), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">1</span>), line<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-20"><a href="#cb44-20" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">5</span> (INDENT), string<span class="op">=</span><span class="st">'    '</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">4</span>), line<span class="op">=</span><span class="st">'    x </span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-21"><a href="#cb44-21" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'x'</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">4</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">5</span>), line<span class="op">=</span><span class="st">'    x </span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-22"><a href="#cb44-22" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">4</span> (NEWLINE), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">6</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">7</span>), line<span class="op">=</span><span class="st">'    x </span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb44-23"><a href="#cb44-23" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">6</span> (DEDENT), string<span class="op">=</span><span class="st">''</span>, start<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">0</span>), line<span class="op">=</span><span class="st">''</span>),</span>
+<span id="cb44-24"><a href="#cb44-24" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">0</span> (ENDMARKER), string<span class="op">=</span><span class="st">''</span>, start<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">0</span>), line<span class="op">=</span><span class="st">''</span>)]</span></code></pre></div>
+<p>Now, this alone is not sufficient. You will notice that we have a <code>if | True</code> block in the code above. We plan to extend on this <code>if</code> construct below.</p>
+<p>You will notice that we are also setting the <code>userStatePrevToken</code> values in this function. We will next look at why we need that when dealing with <code>comments</code>.</p>
+<p>Finally, we still have some more scenarios to handle. - We cannot <code>INDENT</code> if are within a context of a paren <code>(</code>. Therefore, we need to add that condition as well to our <code>whiteSpace</code> action. Notice, that we will be capturing the <code>userStatePrevToken</code> after constructing every token. We can use this information, to infer if we are within the context of a <code>(</code>. - If we just encountered a <code>#comment</code> by itself on a line, then the newline token generated has to be <code>NL</code> and not <code>NEWLINE</code>. We will also not create an <code>INDENT</code> in this case even if the comment is indented.</p>
+<p><a name="paren_newline"></a></p>
+<h4 id="addressing-parens-and-comments-with-newlines">7.3 Addressing Parens and Comments (with Newlines)</h4>
+<p>We will now update our <code>whiteSpace</code> action to handle these scenarios. We will introduce new condition under the <code>if</code> construct to handle the <code>paren</code> and the <code>comment</code> scenario.</p>
+<div class="sourceCode" id="cb45"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true"></a><span class="ot">startWhite::</span> <span class="dt">AlexAction</span> <span class="dt">TokenInfo</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true"></a>startWhite inp inp_len <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true"></a>     is <span class="ot">&lt;-</span> userStateIndentStack <span class="op">&lt;$&gt;</span> alexGetUserState</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true"></a>     <span class="kw">let</span> cur <span class="ot">=</span> <span class="kw">case</span> is <span class="kw">of</span></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true"></a>           c<span class="op">:</span>_ <span class="ot">-&gt;</span> c</span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true"></a>           _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;Indentation stack is not set, alteast one element should be present. Empty list found&quot;</span></span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true"></a></span>
+<span id="cb45-8"><a href="#cb45-8" aria-hidden="true"></a>     parenDepth <span class="ot">&lt;-</span> <span class="fu">length</span> <span class="op">.</span> userStateParenStack <span class="op">&lt;$&gt;</span> alexGetUserState</span>
+<span id="cb45-9"><a href="#cb45-9" aria-hidden="true"></a>     <span class="kw">let</span> (<span class="dt">AlexPosn</span> _ line _, _, _,s) <span class="ot">=</span> inp</span>
+<span id="cb45-10"><a href="#cb45-10" aria-hidden="true"></a>     <span class="co">-- new input</span></span>
+<span id="cb45-11"><a href="#cb45-11" aria-hidden="true"></a>     n_inp<span class="op">@</span>(<span class="dt">AlexPosn</span> _ nline ncol, _, _, ns) <span class="ot">&lt;-</span> alexGetInput</span>
+<span id="cb45-12"><a href="#cb45-12" aria-hidden="true"></a></span>
+<span id="cb45-13"><a href="#cb45-13" aria-hidden="true"></a>     newline_tok <span class="ot">&lt;-</span> newLineAction inp inp_len</span>
+<span id="cb45-14"><a href="#cb45-14" aria-hidden="true"></a>     userState <span class="ot">&lt;-</span> alexGetUserState</span>
+<span id="cb45-15"><a href="#cb45-15" aria-hidden="true"></a></span>
+<span id="cb45-16"><a href="#cb45-16" aria-hidden="true"></a>     <span class="kw">if</span> <span class="op">|</span> (parenDepth <span class="op">&gt;</span> <span class="dv">0</span>) <span class="ot">-&gt;</span>  action <span class="dt">Newline</span> inp inp_len</span>
+<span id="cb45-17"><a href="#cb45-17" aria-hidden="true"></a>        <span class="op">|</span> T.isPrefixOf <span class="st">&quot;#&quot;</span> (T.pack ns) <span class="ot">-&gt;</span> <span class="kw">do</span>  <span class="co">-- this means we are on a comment only line</span></span>
+<span id="cb45-18"><a href="#cb45-18" aria-hidden="true"></a>            alexSetPrevToken newline_tok</span>
+<span id="cb45-19"><a href="#cb45-19" aria-hidden="true"></a>            <span class="fu">return</span> (constructToken newline_tok inp inp_len n_inp)    <span class="co">-- no INDENTS on comment only new line                                                                                                          | otherwise -&gt; ... -- rest of code as above</span></span></code></pre></div>
+<p>For the above code additions to work we also need to track the <code>commentToken</code> and <code>paren</code> action that is explained further down.</p>
+<p>We will using helper function <code>newLineAction</code> to decide whether to generate <code>NL</code> or <code>NEWLINE</code> token depending on the flag set regarding comments. The <code>userStatePrevComment</code> flag is set in the <code>commentAction</code> function whenever a <code>comment</code> is found on a new line (and followed by just whitespaces).</p>
+<p><a name="comment_newline"></a></p>
+<h4 id="special-handling-for-comments">7.4 Special handling for Comments</h4>
+<div class="sourceCode" id="cb46"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true"></a><span class="co">-- Example5/LexerUtil.hs</span></span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true"></a></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true"></a><span class="ot">newLineAction ::</span> <span class="dt">AlexAction</span> <span class="dt">Token</span></span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true"></a>newLineAction inp inp_len <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true"></a>  is_prev_comment <span class="ot">&lt;-</span> userStatePrevComment <span class="op">&lt;$&gt;</span> alexGetUserState</span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true"></a>  <span class="kw">if</span> is_prev_comment <span class="kw">then</span> (<span class="kw">do</span></span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true"></a>   alexSetPrevComment <span class="dt">False</span></span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true"></a>   <span class="fu">return</span> <span class="dt">Nl</span>) <span class="kw">else</span> <span class="fu">return</span> <span class="dt">Newline</span></span></code></pre></div>
+<div class="sourceCode" id="cb47"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true"></a><span class="ot">commentAction ::</span> <span class="dt">AlexAction</span> <span class="dt">TokenInfo</span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true"></a>commentAction inp inp_len <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true"></a>  prevToken <span class="ot">&lt;-</span>  userStatePrevToken <span class="op">&lt;$&gt;</span> alexGetUserState</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true"></a>  <span class="kw">let</span> prevCommentFlag <span class="ot">=</span> prevToken <span class="op">==</span> <span class="dt">Nl</span> <span class="op">||</span> prevToken <span class="op">==</span> <span class="dt">Newline</span></span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true"></a></span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true"></a>  <span class="co">-- here we only flag prevComment if it was followed by a newline</span></span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true"></a>  <span class="co">-- we need this since is the only time we don't introduce the `INDENT`</span></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true"></a>  alexSetPrevComment prevCommentFlag</span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true"></a></span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true"></a>  <span class="co">-- this has new updated input</span></span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true"></a>  <span class="co">--((AlexPosn _ line col),c, rest,s) &lt;- alexGetInput</span></span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true"></a>  <span class="kw">let</span> (<span class="dt">AlexPosn</span> _ line col,c, rest,s) <span class="ot">=</span> inp</span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true"></a></span>
+<span id="cb47-14"><a href="#cb47-14" aria-hidden="true"></a>  <span class="kw">let</span> token_string <span class="ot">=</span> T.stripStart <span class="op">.</span> T.pack <span class="op">$</span> <span class="fu">take</span> inp_len s</span>
+<span id="cb47-15"><a href="#cb47-15" aria-hidden="true"></a>  <span class="kw">let</span> new_len <span class="ot">=</span> T.length token_string</span>
+<span id="cb47-16"><a href="#cb47-16" aria-hidden="true"></a></span>
+<span id="cb47-17"><a href="#cb47-17" aria-hidden="true"></a>  <span class="kw">let</span> new_pos <span class="ot">=</span> col <span class="op">+</span> inp_len <span class="op">-</span> new_len <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb47-18"><a href="#cb47-18" aria-hidden="true"></a>  <span class="kw">let</span> start_pos <span class="ot">=</span> (line, new_pos)</span>
+<span id="cb47-19"><a href="#cb47-19" aria-hidden="true"></a>  <span class="kw">let</span> end_pos <span class="ot">=</span> (line, new_pos <span class="op">+</span> new_len)</span>
+<span id="cb47-20"><a href="#cb47-20" aria-hidden="true"></a></span>
+<span id="cb47-21"><a href="#cb47-21" aria-hidden="true"></a>  <span class="fu">return</span> <span class="op">$</span> <span class="dt">TokenInfo</span> {</span>
+<span id="cb47-22"><a href="#cb47-22" aria-hidden="true"></a>    token_type<span class="ot">=</span><span class="dt">Comment</span>,</span>
+<span id="cb47-23"><a href="#cb47-23" aria-hidden="true"></a>    token_string<span class="ot">=</span>token_string,</span>
+<span id="cb47-24"><a href="#cb47-24" aria-hidden="true"></a>    start_pos<span class="ot">=</span>start_pos,</span>
+<span id="cb47-25"><a href="#cb47-25" aria-hidden="true"></a>    end_pos<span class="ot">=</span>end_pos,</span>
+<span id="cb47-26"><a href="#cb47-26" aria-hidden="true"></a>    }</span></code></pre></div>
+<p>Here is the subtelity, we are trying to handle for <code>#comments</code> that are present by themselves, as opposed to comments beside some statements.</p>
+<div class="sourceCode" id="cb48"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true"></a>In [<span class="dv">59</span>]: <span class="im">import</span> tokenize</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true"></a>    ...:</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true"></a>    ...: z <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true"></a><span class="st">    ...: if f:</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true"></a><span class="st">    ...:</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true"></a><span class="st">    ...:     # comment here gets NL</span></span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true"></a><span class="st">    ...:     x # comment here get NEWLINE</span></span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true"></a><span class="st">    ...: &quot;&quot;&quot;</span></span>
+<span id="cb48-9"><a href="#cb48-9" aria-hidden="true"></a>    ...:</span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true"></a>    ...:</span>
+<span id="cb48-11"><a href="#cb48-11" aria-hidden="true"></a>    ...: <span class="bu">list</span>(tokenize.generate_tokens(io.StringIO(z).readline))</span>
+<span id="cb48-12"><a href="#cb48-12" aria-hidden="true"></a>Out[<span class="dv">59</span>]:</span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true"></a>[TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">61</span> (NL), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">1</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">1</span>, <span class="dv">1</span>), line<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-14"><a href="#cb48-14" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'if'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">2</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-15"><a href="#cb48-15" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'f'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">3</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">4</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-16"><a href="#cb48-16" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">54</span> (OP), string<span class="op">=</span><span class="st">':'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">4</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">5</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-17"><a href="#cb48-17" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">4</span> (NEWLINE), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">5</span>), end<span class="op">=</span>(<span class="dv">2</span>, <span class="dv">6</span>), line<span class="op">=</span><span class="st">'if f:</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-18"><a href="#cb48-18" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">61</span> (NL), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">3</span>, <span class="dv">1</span>), line<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-19"><a href="#cb48-19" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">60</span> (COMMENT), string<span class="op">=</span><span class="st">'# comment here gets NL'</span>, start<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">4</span>), end<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">26</span>), line<span class="op">=</span><span class="st">'    # comment here gets NL</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-20"><a href="#cb48-20" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">61</span> (NL), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">26</span>), end<span class="op">=</span>(<span class="dv">4</span>, <span class="dv">27</span>), line<span class="op">=</span><span class="st">'    # comment here gets NL</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-21"><a href="#cb48-21" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">5</span> (INDENT), string<span class="op">=</span><span class="st">'    '</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">4</span>), line<span class="op">=</span><span class="st">'    x # comment here get NEWLINE</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-22"><a href="#cb48-22" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">1</span> (NAME), string<span class="op">=</span><span class="st">'x'</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">4</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">5</span>), line<span class="op">=</span><span class="st">'    x # comment here get NEWLINE</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-23"><a href="#cb48-23" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">60</span> (COMMENT), string<span class="op">=</span><span class="st">'# comment here get NEWLINE'</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">6</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">32</span>), line<span class="op">=</span><span class="st">'    x # comment here get NEWLINE</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-24"><a href="#cb48-24" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">4</span> (NEWLINE), string<span class="op">=</span><span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, start<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">32</span>), end<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">33</span>), line<span class="op">=</span><span class="st">'    x # comment here get NEWLINE</span><span class="ch">\n</span><span class="st">'</span>),</span>
+<span id="cb48-25"><a href="#cb48-25" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">6</span> (DEDENT), string<span class="op">=</span><span class="st">''</span>, start<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">0</span>), line<span class="op">=</span><span class="st">''</span>),</span>
+<span id="cb48-26"><a href="#cb48-26" aria-hidden="true"></a> TokenInfo(<span class="bu">type</span><span class="op">=</span><span class="dv">0</span> (ENDMARKER), string<span class="op">=</span><span class="st">''</span>, start<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">0</span>), end<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">0</span>), line<span class="op">=</span><span class="st">''</span>)]</span></code></pre></div>
+<p>Observe, when <code>NL</code> tokens are generated as opposed to <code>NEWLINE</code> tokens. Understanding, this can help you understand the code snippets above.</p>
+<p>One other thing, we need to handle is make sure we have matching nested parens, when we generate an tokens for parens. We add these 2 functions, to handle that scenario:</p>
+<p><a name="match_parens"></a></p>
+<h4 id="validate-matching-parens">7.5 Validate Matching Parens</h4>
+<div class="sourceCode" id="cb49"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true"></a><span class="co">-- Para handling - adopted from language-python library</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true"></a><span class="ot">openParen::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">AlexAction</span> <span class="dt">TokenInfo</span></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true"></a>openParen token inp inp_len <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true"></a>           userState <span class="ot">&lt;-</span> alexGetUserState</span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true"></a>           alexSetUserState <span class="op">$</span> userState {</span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true"></a>                            userStateParenStack<span class="ot">=</span>token<span class="op">:</span>userStateParenStack userState}</span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true"></a>           action token inp inp_len</span>
+<span id="cb49-8"><a href="#cb49-8" aria-hidden="true"></a></span>
+<span id="cb49-9"><a href="#cb49-9" aria-hidden="true"></a></span>
+<span id="cb49-10"><a href="#cb49-10" aria-hidden="true"></a><span class="ot">closeParen::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">AlexAction</span> <span class="dt">TokenInfo</span></span>
+<span id="cb49-11"><a href="#cb49-11" aria-hidden="true"></a>closeParen token inp inp_len <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb49-12"><a href="#cb49-12" aria-hidden="true"></a>       userState <span class="ot">&lt;-</span> alexGetUserState</span>
+<span id="cb49-13"><a href="#cb49-13" aria-hidden="true"></a>       <span class="kw">let</span> topParent <span class="ot">=</span> userStateParenStack userState</span>
+<span id="cb49-14"><a href="#cb49-14" aria-hidden="true"></a>       <span class="kw">case</span> topParent <span class="kw">of</span></span>
+<span id="cb49-15"><a href="#cb49-15" aria-hidden="true"></a>            t<span class="op">:</span>ts <span class="ot">-&gt;</span> <span class="kw">case</span> matchParen t token <span class="kw">of</span></span>
+<span id="cb49-16"><a href="#cb49-16" aria-hidden="true"></a>            <span class="co">-- TODO: Add line number info</span></span>
+<span id="cb49-17"><a href="#cb49-17" aria-hidden="true"></a>                 <span class="dt">False</span> <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;Parens don't match &quot;</span> <span class="op">++</span> <span class="fu">show</span> t <span class="op">++</span> <span class="st">&quot;and&quot;</span> <span class="op">++</span> <span class="fu">show</span> token</span>
+<span id="cb49-18"><a href="#cb49-18" aria-hidden="true"></a>                 <span class="dt">True</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb49-19"><a href="#cb49-19" aria-hidden="true"></a>                       <span class="co">-- pop the stack</span></span>
+<span id="cb49-20"><a href="#cb49-20" aria-hidden="true"></a>                       alexSetUserState <span class="op">$</span> userState {</span>
+<span id="cb49-21"><a href="#cb49-21" aria-hidden="true"></a>                                  userStateParenStack<span class="ot">=</span>ts}</span>
+<span id="cb49-22"><a href="#cb49-22" aria-hidden="true"></a>                       action token inp inp_len</span>
+<span id="cb49-23"><a href="#cb49-23" aria-hidden="true"></a>            <span class="co">-- TODO: Add line number info</span></span>
+<span id="cb49-24"><a href="#cb49-24" aria-hidden="true"></a>            [] <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;No paren's to pop for &quot;</span> <span class="op">++</span> <span class="fu">show</span> token</span>
+<span id="cb49-25"><a href="#cb49-25" aria-hidden="true"></a></span>
+<span id="cb49-26"><a href="#cb49-26" aria-hidden="true"></a></span>
+<span id="cb49-27"><a href="#cb49-27" aria-hidden="true"></a><span class="ot">matchParen ::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb49-28"><a href="#cb49-28" aria-hidden="true"></a>matchParen t1 t2 <span class="ot">=</span> <span class="kw">case</span> (t1, t2) <span class="kw">of</span></span>
+<span id="cb49-29"><a href="#cb49-29" aria-hidden="true"></a>           (<span class="dt">Lpar</span>, <span class="dt">Rpar</span>) <span class="ot">-&gt;</span> <span class="dt">True</span></span>
+<span id="cb49-30"><a href="#cb49-30" aria-hidden="true"></a>           (<span class="dt">Lsqb</span>, <span class="dt">Rsqb</span>) <span class="ot">-&gt;</span> <span class="dt">True</span></span>
+<span id="cb49-31"><a href="#cb49-31" aria-hidden="true"></a>           (<span class="dt">Lbrace</span>, <span class="dt">Rbrace</span>) <span class="ot">-&gt;</span> <span class="dt">True</span></span>
+<span id="cb49-32"><a href="#cb49-32" aria-hidden="true"></a>           (_, _) <span class="ot">-&gt;</span> <span class="dt">False</span></span></code></pre></div>
+<p>And finally, to handle the subtleness if how the original Python tokenizer handles comments, we need an specialized action for comments. Here we set up a flag to identify cases where a <code>#comment</code> was seen n a new line without any other statements.</p>
+<p>We will accordingly, update our rules for <code>parens</code> and <code>comments</code> to call these actions.</p>
+<div class="sourceCode" id="cb50"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true"></a>-- Example5/Lexer.x</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true"></a></span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true"></a>      <span class="st">&quot;(&quot;</span>   { openParen Lpar }</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true"></a>      <span class="st">&quot;)&quot;</span>   { closeParen Rpar }</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true"></a>      <span class="st">&quot;[&quot;</span>   { openParen Lsqb }</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true"></a>      <span class="st">&quot;]&quot;</span>   { closeParen Rsqb }</span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true"></a>      <span class="st">&quot;{&quot;</span>   { openParen Lbrace }</span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true"></a>      <span class="st">&quot;}&quot;</span>   { closeParen Rbrace }</span></code></pre></div>
+<p>For comments, to handle newline behavior, we introduce more rules</p>
+<div class="sourceCode" id="cb51"><pre class="sourceCode lex"><code class="sourceCode lex"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true"></a>-- Example5/Lexer.x</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true"></a></span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true"></a>$newline = [\r \n]</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true"></a>$not_newline = ~$newline</span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true"></a>@commentline = (($white_no_nl)*  \# ($not_newline)*)</span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true"></a>@empty_line = (($white_no_nl)*\n)</span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true"></a></span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true"></a><span class="dt">tokens </span><span class="st">:-</span></span>
+<span id="cb51-9"><a href="#cb51-9" aria-hidden="true"></a>       <span class="er">@</span>empty_line {action Nl}</span>
+<span id="cb51-10"><a href="#cb51-10" aria-hidden="true"></a>       <span class="er">@</span>commentline {commentAction}</span></code></pre></div>
+<p>And that’s it. We have a version of a lexer for Python 3.0 which is fully compatible with this <a href="https://github.com/python/cpython/blob/3.9/Lib/tokenize.py">tokenizer</a>.</p>
+<p><a name="conclusion"></a></p>
+<h2 id="thats-a-wrap">8. That’s a Wrap!</h2>
+<p>Phew, if you got this far, then Congratulations! You built a complete lexer in Haskell using Alex. The lexer you built atleast matches the behavior of the Python tokenizer upto the 80+ tests we ran against our lexer<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>. That is a awesome feat! For some of us, this is a college level project but for other’s this is quite an accomplishment!</p>
+<p>For further reading, I would recommend taking a look at the Alex documentation. A lof of what is explained in the document must make sense if you got this far in the tutorial. I have also left a bunch of references that I used while I implemented this project. There are other lexers in the wild that has been built using Alex. Hopefully, this tutorial has given you the knowledge you need to understand those implementations.</p>
+<p><a name="references"></a></p>
+<h4 id="references">9. References</h4>
+<ol type="1">
+<li><a href="https://www.haskell.org/alex/doc/html/index.html">Alex</a> Most of data structures used was adopted from this documentation</li>
+<li><a href="https://hackage.haskell.org/package/language-python">language-python</a> This implementation here helped me understand other approaches of handling white-space context and code organization</li>
+<li><a href="https://github.com/jmoy/alexhappy">jmoy/alexhappy</a> The example here for handling white-spaces/indentation were the building blocks for handling white-spaces in this tutorial</li>
+</ol>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>Alex has a concept called <code>wrappers</code> where versions of this functions are automatically generated. But, to learn to use Alex, we will write this from scratch.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>The current implementation of the lexer does not support Unicode characters in the identifiers even though Unicode characters can be present in the string literals.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+    </section>
+  </article>
+</section>
+
+        </main>
+    <footer>
+        <hr>
+        <div class="social">
+          <ul>
+            <li><a href="https://github.com/gdevanla/">GitHub</a></li>
+            <li><a href="https://twitter.com/grdvnl">Twitter</a></li>
+            <li><a href="https://www.linkedin.com/in/grdvnl/">LinkedIn</a></li>
+          </ul>
+          <ul>
+              <li>
+                Site proudly generated by
+                <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+                </li>
+            </ul>
+        </div><!-- /.social -->
+    </footer>
+    </body>
+</html>
