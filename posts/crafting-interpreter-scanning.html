@@ -216,7 +216,7 @@
 <span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a><span class="ot">it ::</span> <span class="dt">LoxScannerResult</span></span>
 <span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span></span></code></pre></div>
 <p>Note, that <code>=</code> scans to <code>EQUAL</code> and <code>==</code> scans to <code>EQUAL_EQUAL</code>.</p>
-<h2 id="recognizing-quoted-strings">Recognizing Quoted Strings</h2>
+<h1 id="recognizing-quoted-strings">Recognizing Quoted Strings</h1>
 <p><a name="quoted_strings"></a></p>
 <p>Recognizing quoted strings getts a little tricky, since one needs to keep track of escape sequences and nested quoted strings. We had a couple of helper functions to just to the same. Note, that I am using this approach from the <a href="https://stackoverflow.com/questions/24106314/parser-for-quoted-string-using-parsec">SO</a> answer noted in the code snippet below. I will skip the explanation for this direct you to the SO answer in this case.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="co">-- -- https://stackoverflow.com/questions/24106314/parser-for-quoted-string-using-parsec</span></span>
