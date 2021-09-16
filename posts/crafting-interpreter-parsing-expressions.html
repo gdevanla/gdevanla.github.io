@@ -200,7 +200,7 @@ primary        → NUMBER | STRING | &quot;true&quot; | &quot;false&quot; | &quo
 <span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a>      maybeAddSuffix (<span class="dt">Binary</span> e0 op' e1)</span>
 <span id="cb8-12"><a href="#cb8-12" aria-hidden="true"></a></span>
 <span id="cb8-13"><a href="#cb8-13" aria-hidden="true"></a>    maybeAddSuffix e <span class="ot">=</span> addSuffix e <span class="op">&lt;|&gt;</span> <span class="fu">return</span> e</span></code></pre></div>
-<p>Once we have the <code>leftChain</code> function which just need a add a function for each production. For example, for</p>
+<p>Once we have the <code>leftChain</code> function which just need to add a function for each production. For example, for</p>
 <pre class="ebnf"><code>unary          → ( &quot;!&quot; | &quot;-&quot; ) unary
                 | primary ;</code></pre>
 <p>we have,</p>
