@@ -263,7 +263,7 @@ primary        → NUMBER | STRING | &quot;true&quot; | &quot;false&quot; | &quo
 <span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>P.parse equality  <span class="st">&quot;&quot;</span> <span class="op">$</span> fromRight [] (scanner <span class="st">&quot;1&gt;2==3;&quot;</span>)</span>
 <span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a><span class="dt">Right</span> (<span class="dt">Binary</span> (<span class="dt">Binary</span> (<span class="dt">Number</span> <span class="fl">1.0</span>) <span class="dt">Gt</span> (<span class="dt">Number</span> <span class="fl">2.0</span>)) <span class="dt">EqualEqual</span> (<span class="dt">Number</span> <span class="fl">3.0</span>))</span></code></pre></div>
 <h1 id="conclusion">Conclusion</h1>
-<p>That concludes the impelementation of the expression parser. With this we have laid of the groundwork to extend the suite of combinators we have and support more language features in later chapters.</p>
+<p>That concludes the implementation of the expression parser. With this we have laid of the groundwork to extend the suite of combinators we have and support more language features in later chapters.</p>
 <p>I would like to thank <a href="https://www.reddit.com/user/bss03/">bss03</a> for providing good ideas <a href="https://www.reddit.com/r/haskell/comments/pfxgd4/monthly_hask_anything_september_2021/hcyjsb0?utm_source=share&amp;utm_medium=web2x&amp;context=3">here</a> to refine the implemenation of <code>satistyT</code>.</p>
     </section>
   </article>
