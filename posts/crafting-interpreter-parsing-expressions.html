@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>blog <| code - Crafting Interpreters in Haskell - Parsing Expressions</title>
+        <!--web fonts-->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css"> -->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css"> -->
+
+        <link rel="stylesheet" href="../css/main.css" type="text/css" />
+        <!-- <link rel="stylesheet" href="/css/default.css" type="test/css"/> -->
+        <!-- <link rel="stylesheet" href="/css/syntax.css" type="text/css" /> -->
+        <link rel="stylesheet" href="../css/tango.css" type="text/css" />
+        <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+
+    </head>
+    <body>
+      <header>
+        <span><a class="title" href="../index.html"><h1>blog &lt| code </h1></a></span>
+        <nav>
+          <ul>
+            <li><a href="../index.html">posts</a></li>
+            <li><a href="../archive.html">archives</a></li>
+            <li><a href="../pages/books.html">RYAS</a></li>
+            <li><a href="../about.html">about</a></li>
+          </ul>
+        </nav>
+      </header>
+        <main role="main">
+            <section id="content" class="body">
+  <article>
+    <header>
+      <h1>Crafting Interpreters in Haskell - Parsing Expressions</h1>
+      <div class="extra-info">
+        <abbr class="published" title="{{ article.date.isoformat() }}">2021-09-15</abbr>
+      </div><!-- /.entry-content -->
+    </header>
+    <section>
+        <p>In this post, we will continue from where we left off on the <a href="https://gdevanla.github.io/posts/crafting-interpreter-scanning.html">Scanner</a>. Today, we implement a parser close to the one described in <a href="https://craftinginterpreters.com/parsing-expressions.html">Parsing Expressions</a></p>
+<p>We follow the same approach as earlier. That is, we will continue to use <code>Parsec</code> and try to stay close to the implementation of the book as possible. The module presented in this post can be found at <a href="https://github.com/gdevanla/haskell-lox/blob/main/src/ExprParser.hs">ExprParser.hs</a></p>
+<p>Let’s first get some <code>import</code> statements out of the way.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="co">--- Scanner.hs</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="ot">{-# LANGUAGE OverloadedStrings #-}</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="ot">{-# LANGUAGE NoImplicitPrelude #-}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a><span class="kw">module</span> <span class="dt">ExprParser</span> <span class="kw">where</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Data.Text</span> <span class="kw">as</span> <span class="dt">T</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Import</span> <span class="kw">hiding</span> (many, try, (&lt;|&gt;))</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Scanner</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Text.Parsec</span></span></code></pre></div>
+<h1 id="layout">Layout</h1>
+<ol type="1">
+<li><a href="#expression_grammer">Expression Grammar</a></li>
+<li><a href="#parsec_token">Making Parsec Work in Tokens</a></li>
+<li><a href="#examples">Examples</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ol>
+<h1 id="expression-grammar">Expression Grammar</h1>
+<p>As outlined in the book <a href="https://craftinginterpreters.com/parsing-expressions.html">Chapter 6</a>, the expression grammar we want our parser to understand is given by:</p>
+<pre class="ebnf"><code>expression     → literal
+               | unary
+               | binary
+               | grouping ;
+
+literal        → NUMBER | STRING | &quot;true&quot; | &quot;false&quot; | &quot;nil&quot; ;
+grouping       → &quot;(&quot; expression &quot;)&quot; ;
+unary          → ( &quot;-&quot; | &quot;!&quot; ) expression ;
+binary         → expression operator expression ;
+operator       → &quot;==&quot; | &quot;!=&quot; | &quot;&lt;&quot; | &quot;&lt;=&quot; | &quot;&gt;&quot; | &quot;&gt;=&quot;
+               | &quot;+&quot;  | &quot;-&quot;  | &quot;*&quot; | &quot;/&quot; ;</code></pre>
+<p>This grammar will represent the AST we will build after the parser parses the <code>LoxTokInfo</code> tokens that were created previously in the <code>Scanning</code> step. Therefore, we need to represent the above grammar in Haskell as follows:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">BinOp</span> <span class="ot">=</span> <span class="dt">NotEqual</span> <span class="op">|</span> <span class="dt">EqualEqual</span> <span class="op">|</span> <span class="dt">Gt</span> <span class="op">|</span> <span class="dt">Gte</span> <span class="op">|</span> <span class="dt">Lt</span> <span class="op">|</span> <span class="dt">Lte</span> <span class="op">|</span> <span class="dt">Plus</span> <span class="op">|</span> <span class="dt">Minus</span> <span class="op">|</span> <span class="dt">Star</span> <span class="op">|</span> <span class="dt">Slash</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Eq</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">UnaryOp</span> <span class="ot">=</span> <span class="dt">UnaryMinus</span> <span class="op">|</span> <span class="dt">UnaryBang</span> <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Eq</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Expr</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>  <span class="ot">=</span> <span class="dt">Number</span> <span class="dt">Double</span>   <span class="co">-- NUMBER</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Literal</span> <span class="dt">T.Text</span>  <span class="co">-- STRING</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">LoxBool</span> <span class="dt">Bool</span>    <span class="co">-- &quot;true&quot;, &quot;false&quot;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">LoxNil</span>          <span class="co">-- 'nil'</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Paren</span> <span class="dt">Expr</span>      <span class="co">-- grouping</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Unary</span> <span class="dt">UnaryOp</span> <span class="dt">Expr</span>  <span class="co">-- unary</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Binary</span> <span class="dt">Expr</span> <span class="dt">BinOp</span> <span class="dt">Expr</span>  <span class="co">-- binary</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Eq</span>)</span></code></pre></div>
+<p>The comments provided besides each data constructor ties them back to the productions in the expression grammar that is presented above. This <code>data Expr</code> will be the AST that our parser will produce using the same top-down approach we took in the previous chapter.</p>
+<h1 id="making-parsec-work-on-loxtokinfo">Making Parsec Work on LoxTokInfo</h1>
+<p><a name="parsec_token"></a></p>
+<p>Similar to <code>scanning</code> step we want to use the <code>Parsec</code> library to parse the <code>LoxTokInfo</code> tokens we created in the <code>lex</code> step. So far we have used <code>Parsec</code> to parse either <code>String</code> or <code>Char</code> data. Now, we need a way to use <code>Parsec</code> to scan input which are a list of <code>LoxTokInfo</code> tokens. We can do that by implementing our own <code>satisfy</code> version as shown below.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="ot">satisfyT ::</span> (<span class="dt">LoxTokInfo</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> a) <span class="ot">-&gt;</span> <span class="dt">Parser</span> a</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>satisfyT f <span class="ot">=</span> tokenPrim showTok updateTokPos match</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a>    showTok ti <span class="ot">=</span> <span class="fu">show</span> <span class="op">$</span> tokinfo_type ti</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a>    updateTokPos _ _ (s <span class="op">:</span> _) <span class="ot">=</span> tok_position s</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a>    updateTokPos pos _ [] <span class="ot">=</span> pos</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a>    match t <span class="ot">=</span> f t</span></code></pre></div>
+<p>The <code>satisfyT</code> is implemented over the <code>tokenPrim</code> parser. The <code>tokenPrim</code> combinator is the most primitive combinator that all other combinators can be built out of. Since, we want all are combinators to work with <code>LoxTokInfo</code>, we can build the <code>satisfyT</code> function over this combinator and then use the <code>satisfyT</code> function is all other other combinators you will build.</p>
+<p>More detail description of we this works can be found <a href="https://hackage.haskell.org/package/parsec-3.1.14.0/docs/Text-Parsec.html#v:tokenPrim">here</a>. For now, is is sufficient to understand the <code>tokenPrim</code> return the <code>Parser a</code> that satisfies a condition.</p>
+<p>Here the <code>a</code> is generic in <code>satisfyT :: (LoxTokInfo -&gt; Maybe a) -&gt; Parser a</code>. In most cases the <code>a</code> will be the <code>Expr</code> type itself. This will become clear as we look at other combinators.</p>
+<h1 id="implementing-parser">Implementing Parser</h1>
+<p><a name="parser_top_down"></a></p>
+<p>Now, that we have the <code>satisfyT</code> function, we are ready to build other parser combinators. Let first define a type alias that will represent the <code>parser</code> each of our combinators will be returning.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">Parser</span> a <span class="ot">=</span> <span class="dt">ParsecT</span> [<span class="dt">LoxTokInfo</span>] () <span class="dt">Identity</span> a</span></code></pre></div>
+<p>In <a href="https://craftinginterpreters.com/parsing-expressions.html">Chapter 6</a>, the shape of recursive-descent parser we want to build is given by the following grammar that is suggested. The grammar suggested takes care of required precedence and associativity relationships.</p>
+<pre class="ebnf"><code>expression     → equality ;
+equality       → comparison ( ( &quot;!=&quot; | &quot;==&quot; ) comparison )* ;
+comparison     → term ( ( &quot;&gt;&quot; | &quot;&gt;=&quot; | &quot;&lt;&quot; | &quot;&lt;=&quot; ) term )* ;
+term           → factor ( ( &quot;-&quot; | &quot;+&quot; ) factor )* ;
+factor         → unary ( ( &quot;/&quot; | &quot;*&quot; ) unary )* ;
+unary          → ( &quot;!&quot; | &quot;-&quot; ) unary
+               | primary ;
+primary        → NUMBER | STRING | &quot;true&quot; | &quot;false&quot; | &quot;nil&quot;
+               | &quot;(&quot; expression &quot;)&quot; ;</code></pre>
+<p>This grammar will guide us through the combinators we have to build. First let’s build some combinators for the <code>primary</code> productions. You will notice that these combinator uses the <code>satisfyT</code> function to check the <code>LoxTokInfo</code> they need to match and accordingly return an <code>Expr</code> object.</p>
+<p>We have <code>number</code>, <code>literal</code>, <code>loxBool</code>, <code>loxNil</code> and <code>loxParenExpr</code> all lined up with a <code>choice</code> operator in <code>loxPrimary</code>.</p>
+<p>As you will notice, each of the <code>Parsers</code> returned by the combinators, take a <code>LoxTokInfo</code> as input, and if that token matches (via <code>satisfyT</code>), then we will return a <code>Expr</code>.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a><span class="ot">number ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a>number <span class="ot">=</span> satisfyT f</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a>    f (<span class="dt">LoxTokInfo</span> (<span class="dt">NUMBER</span> x) _ _ _) <span class="ot">=</span> <span class="dt">Just</span> (<span class="dt">Number</span> x)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a>    f _ <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a><span class="ot">literal ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true"></a>literal <span class="ot">=</span> satisfyT f</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true"></a>    f (<span class="dt">LoxTokInfo</span> (<span class="dt">STRING</span> x) _ _ _) <span class="ot">=</span> <span class="dt">Just</span> (<span class="dt">Literal</span> <span class="op">$</span> T.pack x)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true"></a>    f _ <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true"></a><span class="ot">loxBool ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true"></a>loxBool <span class="ot">=</span> satisfyT f</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true"></a>    f (<span class="dt">LoxTokInfo</span> <span class="dt">TRUE</span> _ _ _) <span class="ot">=</span> <span class="dt">Just</span> (<span class="dt">LoxBool</span> <span class="dt">True</span>)</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true"></a>    f (<span class="dt">LoxTokInfo</span> <span class="dt">FALSE</span> _ _ _) <span class="ot">=</span> <span class="dt">Just</span> (<span class="dt">LoxBool</span> <span class="dt">False</span>)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true"></a>    f _ <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true"></a></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true"></a></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true"></a><span class="ot">loxNil ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true"></a>loxNil <span class="ot">=</span> satisfyT f</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true"></a>    f (<span class="dt">LoxTokInfo</span> <span class="dt">NIL</span> _ _ _) <span class="ot">=</span> <span class="dt">Just</span> <span class="dt">LoxNil</span></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true"></a>    f _ <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true"></a></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true"></a><span class="ot">loxParenExpr ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true"></a>loxParenExpr <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true"></a>  satisfyT parenOpen <span class="op">*&gt;</span> loxExpr <span class="op">&lt;*</span> satisfyT parenClose</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true"></a>    <span class="co">-- use LoxNil as placeholder, since we do not have an equilivalent Expr for Paren</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true"></a>    parenOpen (<span class="dt">LoxTokInfo</span> <span class="dt">LEFT_PAREN</span> _ _ _) <span class="ot">=</span> <span class="dt">Just</span> ()</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true"></a>    parenOpen _ <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true"></a></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true"></a>    parenClose (<span class="dt">LoxTokInfo</span> <span class="dt">RIGHT_PAREN</span> _ _ _) <span class="ot">=</span> <span class="dt">Just</span> ()</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true"></a>    parenClose _ <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true"></a></span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true"></a><span class="ot">loxPrimary ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true"></a>loxPrimary <span class="ot">=</span> number <span class="op">&lt;|&gt;</span> literal <span class="op">&lt;|&gt;</span> loxBool <span class="op">&lt;|&gt;</span> loxNil <span class="op">&lt;|&gt;</span> loxParenExpr</span></code></pre></div>
+<p>Once we have the primitives, it is just a matter off expanding out each production(line) of the grammar into its own function. But, before that you will notice a common pattern across all expressions. For example,we need to match <code>comparison</code> to one or more of its instances. But, we also want to make sure these are all <code>left-associative</code>.</p>
+<p>To help with that, we have a helper function called <code>leftChain</code>, which closely simulates the <code>chainl</code> function in <code>Parsec</code>. We have to implement our own function, since we want a different type for both <code>p</code> and <code>op</code> that will be passed to the <code>leftChain</code> function. The existing definition of <code>chainl</code> does not work for us.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="co">-- this is similar to chainl in `Text.Parsec` but works on `BinOp`</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="co">-- adopted from https://jakewheat.github.io/intro_to_parsing/</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a><span class="ot">leftChain ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span> <span class="ot">-&gt;</span> <span class="dt">Parser</span> <span class="dt">BinOp</span> <span class="ot">-&gt;</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>leftChain p op <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a>  expr <span class="ot">&lt;-</span> p</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a>  maybeAddSuffix expr</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>    addSuffix e0 <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a>      op' <span class="ot">&lt;-</span> op</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>      e1 <span class="ot">&lt;-</span> p</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a>      maybeAddSuffix (<span class="dt">Binary</span> e0 op' e1)</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true"></a></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true"></a>    maybeAddSuffix e <span class="ot">=</span> addSuffix e <span class="op">&lt;|&gt;</span> <span class="fu">return</span> e</span></code></pre></div>
+<p>Once we have the <code>leftChain</code> function which just need a add a function for each production. For example, for</p>
+<pre class="ebnf"><code>unary          → ( &quot;!&quot; | &quot;-&quot; ) unary
+                | primary ;</code></pre>
+<p>we have,</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a><span class="ot">unary' ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>unary' <span class="ot">=</span> <span class="dt">Unary</span> <span class="op">&lt;$&gt;</span> satisfyT f <span class="op">&lt;*&gt;</span> unary</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>    f (<span class="dt">LoxTokInfo</span> <span class="dt">BANG</span> _ _ _) <span class="ot">=</span> <span class="dt">Just</span> <span class="dt">UnaryBang</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a>    f (<span class="dt">LoxTokInfo</span> <span class="dt">MINUS</span> _ _ _) <span class="ot">=</span> <span class="dt">Just</span> <span class="dt">UnaryMinus</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a>    f _ <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a><span class="ot">unary ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true"></a>unary <span class="ot">=</span> unary' <span class="op">&lt;|&gt;</span> loxPrimary</span></code></pre></div>
+<p>We follow the same pattern for <code>factor</code>, <code>term</code> and <code>comparison</code>. You will notice that similar to the grammar, the dependency goes from <code>equality -&gt; comparison -&gt; term -&gt; factor -&gt; unary</code>. The only difference in each of these functions are the <code>BinOp</code> we match.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="ot">factor ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a>factor <span class="ot">=</span> leftChain unary (satisfyT f)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true"></a>    f x <span class="ot">=</span> <span class="kw">case</span> tokinfo_type x <span class="kw">of</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true"></a>      <span class="dt">STAR</span> <span class="ot">-&gt;</span> <span class="dt">Just</span> <span class="dt">Star</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true"></a>      <span class="dt">SLASH</span> <span class="ot">-&gt;</span> <span class="dt">Just</span> <span class="dt">Slash</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true"></a>      _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true"></a></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true"></a><span class="ot">term ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true"></a>term <span class="ot">=</span> leftChain factor (satisfyT f)</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true"></a>    f x <span class="ot">=</span> <span class="kw">case</span> tokinfo_type x <span class="kw">of</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true"></a>      <span class="dt">MINUS</span> <span class="ot">-&gt;</span> <span class="dt">Just</span> <span class="dt">Minus</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true"></a>      <span class="dt">PLUS</span> <span class="ot">-&gt;</span> <span class="dt">Just</span> <span class="dt">Plus</span></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true"></a>      _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true"></a></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true"></a></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true"></a><span class="ot">comparison ::</span> <span class="dt">Parser</span> <span class="dt">Expr</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true"></a>comparison <span class="ot">=</span> leftChain term (satisfyT f)</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true"></a>    f x <span class="ot">=</span> <span class="kw">case</span> tokinfo_type x <span class="kw">of</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true"></a>      <span class="dt">GREATER</span> <span class="ot">-&gt;</span> <span class="dt">Just</span> <span class="dt">Gt</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true"></a>      <span class="dt">GREATER_EQUAL</span> <span class="ot">-&gt;</span> <span class="dt">Just</span> <span class="dt">Gte</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true"></a>      <span class="dt">LESS</span> <span class="ot">-&gt;</span> <span class="dt">Just</span> <span class="dt">Lt</span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true"></a>      <span class="dt">LESS_EQUAL</span> <span class="ot">-&gt;</span> <span class="dt">Just</span> <span class="dt">Lte</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true"></a>      _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span></span></code></pre></div>
+<p>Finally, we can add our helper scanner function:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="ot">scannerLoxTokens ::</span> [<span class="dt">LoxTokInfo</span>] <span class="ot">-&gt;</span> <span class="dt">LoxParserResult</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a>scannerLoxTokens <span class="ot">=</span> parse loxExpr <span class="st">&quot;&quot;</span></span></code></pre></div>
+<p>The concludes the implementation of the <code>Parser</code>.</p>
+<h1 id="examples">Examples</h1>
+<p><a name="examples"></a></p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a><span class="co">--  term</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>P.parse equality  <span class="st">&quot;&quot;</span> <span class="op">$</span> fromRight [] (scanner <span class="st">&quot;1+2;&quot;</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a><span class="dt">Right</span> (<span class="dt">Binary</span> (<span class="dt">Number</span> <span class="fl">1.0</span>) <span class="dt">Plus</span> (<span class="dt">Number</span> <span class="fl">2.0</span>))</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a><span class="co">--  factor</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>P.parse equality  <span class="st">&quot;&quot;</span> <span class="op">$</span> fromRight [] (scanner <span class="st">&quot;1*2/3;&quot;</span>)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a><span class="dt">Right</span> (<span class="dt">Binary</span> (<span class="dt">Binary</span> (<span class="dt">Number</span> <span class="fl">1.0</span>) <span class="dt">Star</span> (<span class="dt">Number</span> <span class="fl">2.0</span>)) <span class="dt">Slash</span> (<span class="dt">Number</span> <span class="fl">3.0</span>))</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a><span class="co">-- comparisons</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>P.parse equality  <span class="st">&quot;&quot;</span> <span class="op">$</span> fromRight [] (scanner <span class="st">&quot;1&gt;2&lt;=3;&quot;</span>)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a><span class="dt">Right</span> (<span class="dt">Binary</span> (<span class="dt">Binary</span> (<span class="dt">Number</span> <span class="fl">1.0</span>) <span class="dt">Gt</span> (<span class="dt">Number</span> <span class="fl">2.0</span>)) <span class="dt">Lte</span> (<span class="dt">Number</span> <span class="fl">3.0</span>))</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true"></a><span class="co">-- equality</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a>λ <span class="op">&gt;&gt;</span>P.parse equality  <span class="st">&quot;&quot;</span> <span class="op">$</span> fromRight [] (scanner <span class="st">&quot;1&gt;2==3;&quot;</span>)</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a><span class="dt">Right</span> (<span class="dt">Binary</span> (<span class="dt">Binary</span> (<span class="dt">Number</span> <span class="fl">1.0</span>) <span class="dt">Gt</span> (<span class="dt">Number</span> <span class="fl">2.0</span>)) <span class="dt">EqualEqual</span> (<span class="dt">Number</span> <span class="fl">3.0</span>))</span></code></pre></div>
+<h1 id="conclusion">Conclusion</h1>
+<p>That concludes the impelementation of the expression parser. With this we have laid of the groundwork to extend the suite of combinators we have and support more language features in later chapters.</p>
+<p>I would like to thank <a href="https://www.reddit.com/user/bss03/">bss03</a> for providing good ideas <a href="https://www.reddit.com/r/haskell/comments/pfxgd4/monthly_hask_anything_september_2021/hcyjsb0?utm_source=share&amp;utm_medium=web2x&amp;context=3">here</a> to refine the implemenation of <code>satistyT</code>.</p>
+    </section>
+  </article>
+</section>
+
+        </main>
+    <footer>
+        <hr>
+        <div class="social">
+          <ul>
+            <li><a href="https://github.com/gdevanla/">GitHub</a></li>
+            <li><a href="https://twitter.com/grdvnl">Twitter</a></li>
+            <li><a href="https://www.linkedin.com/in/grdvnl/">LinkedIn</a></li>
+          </ul>
+          <ul>
+              <li>
+                Site proudly generated by
+                <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+                </li>
+            </ul>
+        </div><!-- /.social -->
+    </footer>
+    </body>
+</html>
