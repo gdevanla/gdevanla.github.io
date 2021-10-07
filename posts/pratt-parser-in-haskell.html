@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>blog <| code - A Simplistic Implementation of Pratt Parser in Haskell</title>
+        <!--web fonts-->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css"> -->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css"> -->
+
+        <link rel="stylesheet" href="../css/main.css" type="text/css" />
+        <!-- <link rel="stylesheet" href="/css/default.css" type="test/css"/> -->
+        <!-- <link rel="stylesheet" href="/css/syntax.css" type="text/css" /> -->
+        <link rel="stylesheet" href="../css/tango.css" type="text/css" />
+        <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+
+    </head>
+    <body>
+      <header>
+        <span><a class="title" href="../index.html"><h1>blog &lt| code </h1></a></span>
+        <nav>
+          <ul>
+            <li><a href="../index.html">posts</a></li>
+            <li><a href="../archive.html">archives</a></li>
+            <li><a href="../pages/books.html">RYAS</a></li>
+            <li><a href="../about.html">about</a></li>
+          </ul>
+        </nav>
+      </header>
+        <main role="main">
+            <section id="content" class="body">
+  <article>
+    <header>
+      <h1>A Simplistic Implementation of Pratt Parser in Haskell</h1>
+      <div class="extra-info">
+        <abbr class="published" title="{{ article.date.isoformat() }}">2021-10-06</abbr>
+      </div><!-- /.entry-content -->
+    </header>
+    <section>
+        <p>I am currently working through an implementation of language described in <a href="https://craftinginterpreters.com/">Crafting Interpreters</a> book in Haskell. The chapter on <a href="https://craftinginterpreters.com/compiling-expressions.html">Compiling Expressions</a> introduces the user to a parser called the <code>Pratt Parser</code> or <code>Top-Down Operator Precendence</code> parser. During my first pass through this chapter, I found it difficult to follow how the parser was actually working, though the author does a very good job building up a the <code>C</code> code in small chunks. I had to pause at this point and find other resources that would help in understanding how this algorithm worked.</p>
+<p>First, I tried reading the author Bob Nystrom’s suggestion and visited his blog post on the same topic <a href="https://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/">here</a>. I still could not get it. Perhaps, I had some pre-concieved notion of this parser which was making it difficult for me. Then, looking around I found a more accessible explanation by Eli Bendersky <a href="https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing">here</a>. The author does a great job discussing the algorithm with a simple Python based parser. With some staring and playing around with small AST’s, the working of the algorithm started making sense.</p>
+<p>After understanding the code examples in Python, and later going through the original paper <a href="https://github.com/tdop/tdop.github.io">Top Down Operator Precedence - Vaughan R. Pratt</a>, I realized the actual algorithm was so simple, but yet so powerful. Looking at the algorithm as some conditional depth-first traversal on a tree was very helpful for me.</p>
+<p>In this post, I attempt to provide an mental model I used to understand how this algorithm works. Once, we get the basics down, I will show you how to implement this in Haskell for a very basic grammar. The final code we produce with demonstrate the working of the Pratt parser in setting up both associativity and precedence.</p>
+<h1 id="problem">Problem</h1>
+<p>Let’s look at the problem this algorithm solves. Say, we have an expression <code>4 + 2 * 3</code>. This expression could get parsed into 2 different Abstract Syntax Trees (AST). The first one would parse the expression as <code>(4+2)*3</code> and produce the result <code>18</code>, while the second AST would produce <code>4+(2*3)</code>, thus producing <code>10</code> on evaluation of the expression.</p>
+<pre><code>-- ast where `+` gets higher precedence than `*`
+     *
+    / \
+   +   3
+  / \
+ 4   2
+</code></pre>
+<pre><code>-- ast where `*` gets higher precedence
+
+    +
+   / \
+  4   *
+     / \
+    /   \
+   2     3</code></pre>
+<p>What we need is the second AST. More fundamentally, we need to encode the precedence of these operators in the parser code to parse this expression. Usually, when a recursive-descent parser is used,the functions are arranged in such a manner such the both the associativity and precedence are handled.</p>
+<p>The <code>Pratt parser</code> is an alternate algorithm that addresses the precedence requirements. In a recursive-descent(RD) parser, the non-terminals of the grammar become entry points(functions) in our code. But, with a <code>Pratt parser</code>, as you will see later in this post, the <code>tokens</code> of the parsed expression drive the parsing. Based on the <code>token</code> in context, different paths are taken to construct the desired AST.</p>
+<h1 id="approach">Approach</h1>
+<p>Lets’ look at a more complex syntax tree. We will use this AST to understand how to approach this problem.</p>
+<pre><code>    -- 1 + (2*3) + 4
+
+                   +
+                  / \
+                 +   4
+                / \
+               /   \
+              1     *
+                   / \
+                  /   \
+                 2     3
+</code></pre>
+<p>I will slightly rotate this tree to make the <code>levels</code> of operators clearer.</p>
+<pre><code>            1-----+---------+
+                  |         |
+                  |         4
+                  |
+               2--*--3</code></pre>
+<p>Notice that the <code>+</code> operators are at one level, and <code>*</code> operators are at lower level. We can view these levels at the <code>precedence</code> levels. These operators operate at with respect to each other. Here the <code>lower</code> the level in the diagram, the higher the precedence of the operator. Here is another example, that will help clarify, what I am trying to explain.</p>
+<pre><code>
+    -- 1 + 2 * 3 / 6 - 1
+
+                   -
+                  / \
+                 +   1
+                / \
+               /   \
+              1    `div`
+                   / \
+                  /   \
+                 *    6
+                / \
+               /   \
+              2     3
+
+</code></pre>
+<p>Lets rotate the tree slightly, so that we line up the operators, on the same plane as their precdence levels. Here <code>+</code> and <code>-</code> share the same precdence level, and <code>*</code> and <code>/</code> share the same precedence level.</p>
+<pre class="1c-enterprise"><code>
+      1--------+----------`-`------1
+                |
+                |
+            2---*----3----/
+                          |
+                          6
+</code></pre>
+<p>Say, we are asked to evaluate the AST example we saw earlier:</p>
+<pre><code>    -- 1 + 2 * 3 + 4
+
+                   +
+                  / \
+                 +   4
+                / \
+               /   \
+              1     *
+                   / \
+                  /   \
+                 2     3
+</code></pre>
+<p>At every node that is rooted with an <code>operator</code> we need to make a decision based on <code>operator</code> the subtree of the <code>operator</code> is rooted on. Here, say we are at the first <code>+</code>, then looking at the right sub-tree, since <code>*</code> has higher precedence we will evaluate that subtree before evaluating <code>+</code>. But, of course we don’t have this tree consructed already to be able to make this decision. We have to work with an expression which looks like the one below and that is where the Pratt parser helps.</p>
+<pre><code>1 + 2 * 3 + 4</code></pre>
+<p>Let’s define the precedence level of <code>+</code> to be <code>10</code> and that of <code>*</code> to be <code>20</code>. If we had a simple expression such as <code>1 + 2 * 3</code>, this is how our parser could work:</p>
+<ol type="a">
+<li>Parse token <code>1</code>. Eval this value.</li>
+<li>Parse token <code>+</code>. Say,at this point, the precdence level is <code>10</code></li>
+<li>Parse token <code>2</code>. At this point, we need to decide if <code>2</code> associates with <code>+</code> or the following operator.</li>
+</ol>
+<p>Now, at this point we know we would have evaluated <code>1</code> which we will call the <code>null</code> denomination of <code>+</code>. But, before we decide whether to evaluate <code>2</code>, we will have to look ahead to check if <code>2</code> associates to another sub-tree rooted with an operator that has higher precedence. Therefore,</p>
+<ol start="4" type="a">
+<li>Parse token <code>*</code></li>
+</ol>
+<p>Now, since the <code>*</code> has higher precedence that <code>+</code>, we start a new parse tree rooted at <code>*</code>, evaluate <code>2</code> as the left operand of <code>*</code> and then perform same steps with <code>3</code>. Once the sub-tree is evaluated, then we continue with our initial rooted tree from where we had branched off.</p>
+<p>That is the crux of this algorithm. Logically, inspect the precedence of the <code>operator</code> that is the <code>root</code> of the subtree and then decide whether to evaluate the sub-tree or just evaluate the operand to the right.</p>
+<p>Yet, another way to think about, is given an expression string <code>1 + 2 * 3</code>, we are processing each token in a depth-first search tree. At each point, we are at a precedence level (call it, rbp). Every time we need to decide whether to evaluate a token, we need to look at the precedence level of that operator that token needs to associate with. If precedence is higher, than we recurse down to that subtree. Once the recursion of the sub-tree returns, we continue with the current level.</p>
+<h1 id="implementing-the-pratt-parser-in-haskell">Implementing the Pratt Parser in Haskell</h1>
+<h2 id="a-simple-grammar">A Simple Grammar</h2>
+<p>Let’s define a grammar for the expressions we will support. We will parse this expression into a <code>Token</code> type list. The list of <code>Tokens</code> will be the input to the Pratt parser.</p>
+<p>We will start with support for expressions with <code>binary</code> operations such as <code>+</code>, <code>-</code>, <code>*</code> and <code>/</code>. Later in the post, we will also add a <code>negation</code> (unary) operator.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a><span class="co">-- Example expressions:</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a><span class="dv">1</span> <span class="op">+</span> <span class="dv">2</span> <span class="op">*</span> <span class="dv">3</span> <span class="op">+</span> <span class="dv">4</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a><span class="co">-- parens introduce grouping</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a>(<span class="dv">1</span> <span class="op">+</span> <span class="dv">2</span>) <span class="op">*</span> <span class="dv">3</span> <span class="op">+</span> <span class="dv">4</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a><span class="co">-- this is right associative, we will also see how to do this</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a><span class="dv">3</span> <span class="op">^</span> <span class="dv">2</span> <span class="op">^</span> <span class="dv">3</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a><span class="op">.</span><span class="ot">```</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a><span class="ot">The tokens we will need to produce while scanning this grammar can be defined as follows:</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true"></a><span class="ot">```</span> haskell</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Token</span> <span class="ot">=</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true"></a>  <span class="dt">Plus</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Minus</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Star</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Slash</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Exp</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Number</span> <span class="op">!</span><span class="dt">Double</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">LParen</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">RParen</span></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">EndTok</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true"></a>  <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>)</span></code></pre></div>
+<h2 id="set-up-a-parser-for-the-grammar">Set Up A Parser for the Grammar</h2>
+<p>We will use <code>Parsec</code> to scan the expression and produce the list of <code>Tokens</code>. I will skip the explanation of this code. For now, it is enough to assume that this scanner produces a list of <code>Tokens</code> when the <code>parseExpression</code> function is called with an expression string.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a><span class="ot">whitespace ::</span> <span class="dt">Parser</span> ()</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>whitespace <span class="ot">=</span> void <span class="op">$</span> PS.many <span class="op">$</span> oneOf <span class="st">&quot; &quot;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a><span class="ot">lexeme ::</span> <span class="dt">Parser</span> a <span class="ot">-&gt;</span> <span class="dt">Parser</span> a</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a>lexeme p <span class="ot">=</span> p <span class="op">&lt;*</span> whitespace</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a><span class="ot">scanNumber ::</span> <span class="dt">Parser</span> <span class="dt">Token</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a>scanNumber <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a>  digits <span class="ot">&lt;-</span> lexeme <span class="op">$</span> PS.many1 digit</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true"></a>  <span class="fu">return</span> <span class="op">$</span> <span class="dt">Number</span> (<span class="fu">read</span> digits)</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true"></a></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true"></a><span class="ot">scanOperator ::</span> <span class="dt">Parser</span> <span class="dt">Token</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true"></a>scanOperator <span class="ot">=</span> choice <span class="op">$</span> build <span class="op">&lt;$&gt;</span> [</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true"></a>  (<span class="dt">Plus</span>, <span class="ch">'+'</span>),</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true"></a>  (<span class="dt">Minus</span>, <span class="ch">'-'</span>),</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true"></a>  (<span class="dt">Slash</span>, <span class="ch">'/'</span>),</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true"></a>  (<span class="dt">Star</span>, <span class="ch">'*'</span>),</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true"></a>  (<span class="dt">Exp</span>, <span class="ch">'^'</span>),</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true"></a>  (<span class="dt">LParen</span>, <span class="ch">'('</span>),</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true"></a>  (<span class="dt">RParen</span>, <span class="ch">')'</span>)</span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true"></a>  ]</span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true"></a><span class="ot">    build ::</span> (<span class="dt">Token</span>, <span class="dt">Char</span>) <span class="ot">-&gt;</span> <span class="dt">Parser</span> <span class="dt">Token</span></span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true"></a>    build (x, y) <span class="ot">=</span> lexeme <span class="op">$</span> x <span class="op">&lt;$</span> char y</span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true"></a></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true"></a><span class="ot">parseExpression ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">PS.ParseError</span> [<span class="dt">Token</span>]</span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true"></a>parseExpression inp <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true"></a>  toks <span class="ot">&lt;-</span> PS.parse (many1 (PS.try scanNumber <span class="op">&lt;|&gt;</span> scanOperator) <span class="op">&lt;*</span> eof) <span class="st">&quot;&quot;</span> inp</span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true"></a>  <span class="fu">return</span> <span class="op">$</span> toks <span class="op">++</span> [<span class="dt">EndTok</span>]</span></code></pre></div>
+<h2 id="define-the-state">Define The State</h2>
+<p>Since we need to pass around the list of <code>[Tokens]</code> while we parse the tokens into a AST, we will perform the entire computation inside a <code>State</code> monad. For our simple grammar, our expression will always produce a <code>Double</code> value.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">TokenS</span> <span class="ot">=</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Double</span></span></code></pre></div>
+<h3 id="helper-functions-for-handling-state">Helper Functions For Handling State</h3>
+<p>Let’s next set up helper functions, that will let us <code>peek</code> into the current token, or move our state to the <code>next</code> token in the <code>[Token]</code> value. Note, I have chosen to just <code>error</code> out on invalid calls here for sake of exposition. I would follow different approach like, use Maybe or Either data types, in more serious code.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="ot">nextToken ::</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Token</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a>nextToken <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a>  s <span class="ot">&lt;-</span> get</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>  <span class="kw">case</span> s <span class="kw">of</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a>    (x<span class="op">:</span>xs) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a>      put xs</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a>      <span class="fu">return</span> x</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a>    _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;Token list is empty&quot;</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true"></a><span class="ot">currToken ::</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Token</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true"></a>currToken <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true"></a>  s <span class="ot">&lt;-</span> get</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true"></a>  <span class="kw">case</span> s <span class="kw">of</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true"></a>    (x<span class="op">:</span>_) <span class="ot">-&gt;</span> <span class="fu">return</span> x</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a>    _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;No more tokens&quot;</span></span></code></pre></div>
+<h2 id="set-up-infix-precision-map">Set Up <code>InFix</code> Precision Map</h2>
+<p>The <code>binary operator</code> examples we saw above are examples of <code>infix</code> operators. We will now create a map of precedence levels for the binary operators we will support.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a><span class="ot">infixPrecedence ::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">Double</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>infixPrecedence tok <span class="ot">=</span> <span class="kw">case</span> tok <span class="kw">of</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a>  <span class="dt">Number</span> _ <span class="ot">-&gt;</span> <span class="dv">0</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>  <span class="dt">LParen</span> <span class="ot">-&gt;</span> <span class="dv">0</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>  <span class="dt">RParen</span> <span class="ot">-&gt;</span> <span class="dv">0</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>  <span class="dt">EndTok</span> <span class="ot">-&gt;</span> <span class="dv">0</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a>  <span class="dt">Minus</span> <span class="ot">-&gt;</span> <span class="dv">10</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a>  <span class="dt">Plus</span> <span class="ot">-&gt;</span> <span class="dv">10</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a>  <span class="dt">Star</span> <span class="ot">-&gt;</span> <span class="dv">20</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a>  <span class="dt">Slash</span> <span class="ot">-&gt;</span> <span class="dv">20</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a>  <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dv">30</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a>  _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;prec not defined for = &quot;</span> <span class="op">++</span> <span class="fu">show</span> tok</span></code></pre></div>
+<h2 id="null-denominationsnud">Null denominations(<code>nud</code>)</h2>
+<p>These are <code>right</code> operands of the operators we are evaluating. The original paper refer’s to this term as <code>nud</code> and we stick to that terminology.</p>
+<p>In our case, for the first version, the only <code>arguments</code> the binary operators accept is the <code>Number</code> data constructor. The <code>nud</code> function just evaluates the token that is passed to it.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="ot">nud ::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Double</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a>nud (<span class="dt">Number</span> x) <span class="ot">=</span> <span class="fu">return</span> x</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a>nud _ <span class="ot">=</span> <span class="fu">error</span> <span class="st">&quot;only number literal supported for nud&quot;</span></span></code></pre></div>
+<h2 id="left-denominationsled">Left Denominations(<code>led</code>)</h2>
+<p>And, now we need a way to evaluate the <code>right</code> side of the operator. We handle this in a function called <code>led</code>. This functions accepts the already evaluated <code>left</code> operand. This function is called, when the parser encounters one of the operators. The operator parameter is also passed in as an argument. Note, that by the time this function is called, the head of <code>[Token]</code> list contains the <code>right</code> operand to the operator this function is called for. Therefore, first, the function evaluates its <code>right</code> expression and then does the operator specific evaluation.</p>
+<p>To start let’s just focus on <code>+</code> and <code>*</code>. Notice that for <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, we first evaluate <code>right</code> operand by calling into the <code>precedenceParser</code> function. The <code>expression</code> function accepts the precedence level of the current operator. The <code>precedenceParser</code> function is the core function which will perform the <code>precedence based depth first traversal</code>.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="ot">led ::</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">TokenS</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true"></a>led left tok <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true"></a>  <span class="kw">case</span> tok <span class="kw">of</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true"></a>    <span class="dt">Plus</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> expression (infixPrecedence tok)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">+</span> right</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true"></a>    <span class="dt">Minus</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> expression (infixPrecedence tok)</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">-</span> right</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true"></a>    <span class="dt">Star</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> expression (infixPrecedence tok)</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">*</span> right</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true"></a>    <span class="dt">Slash</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> expression (infixPrecedence tok)</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">/</span> right</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true"></a>    <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> expression <span class="op">$</span> infixPrecedence tok <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">**</span> right</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true"></a>    _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="fu">show</span> tok <span class="op">++</span> <span class="st">&quot;not supported&quot;</span></span></code></pre></div>
+<h2 id="precedence-parser">Precedence Parser</h2>
+<p>Now, we have all the peripheral functions set up. We are ready to implement the <code>core</code> function of our parser. Usually, I have seen, this function named as <code>precedenceParser</code>. We will use the same name.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a><span class="co">-- rbp here is the right-bound precedence level</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true"></a><span class="ot">precedenceParser ::</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">TokenS</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true"></a>precedenceParser rbp <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true"></a>  token <span class="ot">&lt;-</span> nextToken</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true"></a>  left <span class="ot">&lt;-</span> nud token</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true"></a>  nt1 <span class="ot">&lt;-</span> currToken</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true"></a>  go left nt1</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true"></a>    go left' nt' <span class="ot">=</span> <span class="kw">if</span> rbp <span class="op">&lt;</span> infixPrecedence nt' <span class="kw">then</span> <span class="kw">do</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true"></a>        void nextToken</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true"></a>        left'' <span class="ot">&lt;-</span> led left' nt'</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true"></a>        nt'' <span class="ot">&lt;-</span> currToken</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true"></a>        go left'' nt''</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true"></a>      <span class="kw">else</span> <span class="fu">return</span> left'</span></code></pre></div>
+<p>Now, lets look at this function closely. The function accepts the <code>precedence</code> level as its argument. Here are the steps, the function follows to parse an expression like `1 + 2 * 3 + 4.</p>
+<ol start="0" type="1">
+<li>The function is called with <code>0</code> and a <code>token</code> state, that looks like <code>[Number 1, Plus, Number 2, Star, Number 3, Plus, Number 4]</code></li>
+</ol>
+<ol start="2" type="a">
+<li><p><code>nextToken</code>, updates the <code>token</code> state to <code>[Plus, Number 2, Star, Number 3, Plus, Number 4]</code> and binds <code>1</code> to <code>token</code>.</p></li>
+<li><p>We call <code>nud</code> on <code>token</code> and this gives us the value of the <code>left</code> expression of the operator.</p></li>
+<li><p>Now we need to decide whether to just return or evaluate the deeper sub-tree based on precedence level. Remember we start with <code>rbp=0</code>. Since <code>rbp</code> is less the precedence level of <code>+</code>, which is our current token (<code>nt1 &lt;- currToken</code>), we recurse with the helper function <code>go</code>. In the <code>go</code> function, we update the <code>token</code> state to <code>[Number 2, Star, Number 3, Plus, Number 4]</code>, and then call the <code>led</code> function. If you recall, the <code>led</code> function accepts an <code>operator</code> token and evaluates the token at the head of the <code>Token</code> list.</p></li>
+<li><p>Once the <code>go</code> function recursion is completed at the given precedence level, we return the last evaluated <code>left</code> expression.</p></li>
+</ol>
+<p>Here is the call stack (I have also shown the state that gets passed during the calls)</p>
+<pre><code>.. precedenceParser 0 [Number 1, Plus, Number 2, Star, Number 3, Plus, Number 4]
+....... nud (Number 1)  -- we have 1
+....... go 1 `+`
+............. led 2 `+` [Number 2, Star, Number 3, Plus, Number 4]
+..................... precendenceParser 10 [Number 2, Star, Number 3, Plus, Number 4]
+........................... nud (Number 2)  -- we have number 2
+........................... go 2 `*`
+.................................  led 2 `*` [Number 3, Plus, Number 4]
+.......................................... precedenceParser 20 [Number 3, Plus, Number 4]
+................................................  nud (Number 3) -- we have 3
+..................................................... -- no call to `go` since `20` &lt; precedenc of `+` which is `10`
+................................................  return 3
+.................................  return 6 (2 * 3)
+..................... return 1 + 6
+.........go 7 `+` [Number 4]
+.............led 7 `+`[Number 4]
+.....................precendenceParser 10 [Number 4]
+...........................nud (Number 7) -- we have 4
+...........................no more tokens, `go` not called anymore
+.............return 11
+.........return 11</code></pre>
+<h2 id="adding-support-for-prefix-opeartors">Adding support for <code>Prefix</code> opeartors</h2>
+<p>For prefix operatos like a <code>negation</code> operator, we need to create a new precedence map and update our <code>nud</code> function accordingly. For this post, we will hard code the prefixes in the <code>nud</code> function itself. Notice, that a high value of 100 is being passed as precedence of <code>minus</code> operator. We do that since, we want the argument to <code>-</code> evaluated before it can be negated.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="ot">nud ::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Double</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a>nud (<span class="dt">Number</span> x) <span class="ot">=</span> <span class="fu">return</span> x</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true"></a>nud <span class="dt">Minus</span> <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true"></a>  right <span class="ot">&lt;-</span> precedenceParser <span class="dv">100</span>  <span class="co">-- add this to prefix map</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true"></a>  <span class="fu">return</span> <span class="op">$</span> <span class="op">-</span>right</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true"></a>nud _ <span class="ot">=</span> <span class="fu">error</span> <span class="st">&quot;only literal supported for nud&quot;</span></span></code></pre></div>
+<p>The full code example that is reproduced below also handles grouping <code>()</code> as prefix operators.</p>
+<h2 id="full-code-example">Full Code Example</h2>
+<p>The code below is the entire Parser in one module. There is additional handling for <code>Exp</code> operator and <code>parens</code> in the code below. You can load the code into <code>ghci</code> and run <code>evalAll</code> to run some examples provided at the bottom of the module.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a><span class="kw">module</span> <span class="dt">PrattParser</span> <span class="kw">where</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Control.Monad.State.Strict</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Text.Parsec.String</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Text.Parsec.Char</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true"></a><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Text.Parsec</span> <span class="kw">as</span> <span class="dt">PS</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Text.Parsec.Combinator</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Control.Applicative</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true"></a><span class="kw">import</span> <span class="dt">Data.Either</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true"></a></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true"></a></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true"></a><span class="ot">whitespace ::</span> <span class="dt">Parser</span> ()</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true"></a>whitespace <span class="ot">=</span> void <span class="op">$</span> PS.many <span class="op">$</span> oneOf <span class="st">&quot; &quot;</span></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true"></a></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true"></a><span class="ot">lexeme ::</span> <span class="dt">Parser</span> a <span class="ot">-&gt;</span> <span class="dt">Parser</span> a</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true"></a>lexeme p <span class="ot">=</span> p <span class="op">&lt;*</span> whitespace</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true"></a></span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true"></a><span class="ot">scanNumber ::</span> <span class="dt">Parser</span> <span class="dt">Token</span></span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true"></a>scanNumber <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true"></a>  digits <span class="ot">&lt;-</span> lexeme <span class="op">$</span> PS.many1 digit</span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true"></a>  <span class="fu">return</span> <span class="op">$</span> <span class="dt">Number</span> (<span class="fu">read</span> digits)</span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true"></a></span>
+<span id="cb19-23"><a href="#cb19-23" aria-hidden="true"></a><span class="ot">scanOperator ::</span> <span class="dt">Parser</span> <span class="dt">Token</span></span>
+<span id="cb19-24"><a href="#cb19-24" aria-hidden="true"></a>scanOperator <span class="ot">=</span> choice <span class="op">$</span> build <span class="op">&lt;$&gt;</span> [</span>
+<span id="cb19-25"><a href="#cb19-25" aria-hidden="true"></a>  (<span class="dt">Plus</span>, <span class="ch">'+'</span>),</span>
+<span id="cb19-26"><a href="#cb19-26" aria-hidden="true"></a>  (<span class="dt">Minus</span>, <span class="ch">'-'</span>),</span>
+<span id="cb19-27"><a href="#cb19-27" aria-hidden="true"></a>  (<span class="dt">Slash</span>, <span class="ch">'/'</span>),</span>
+<span id="cb19-28"><a href="#cb19-28" aria-hidden="true"></a>  (<span class="dt">Star</span>, <span class="ch">'*'</span>),</span>
+<span id="cb19-29"><a href="#cb19-29" aria-hidden="true"></a>  (<span class="dt">Exp</span>, <span class="ch">'^'</span>),</span>
+<span id="cb19-30"><a href="#cb19-30" aria-hidden="true"></a>  (<span class="dt">LParen</span>, <span class="ch">'('</span>),</span>
+<span id="cb19-31"><a href="#cb19-31" aria-hidden="true"></a>  (<span class="dt">RParen</span>, <span class="ch">')'</span>)</span>
+<span id="cb19-32"><a href="#cb19-32" aria-hidden="true"></a>  ]</span>
+<span id="cb19-33"><a href="#cb19-33" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb19-34"><a href="#cb19-34" aria-hidden="true"></a><span class="ot">    build ::</span> (<span class="dt">Token</span>, <span class="dt">Char</span>) <span class="ot">-&gt;</span> <span class="dt">Parser</span> <span class="dt">Token</span></span>
+<span id="cb19-35"><a href="#cb19-35" aria-hidden="true"></a>    build (x, y) <span class="ot">=</span> lexeme <span class="op">$</span> x <span class="op">&lt;$</span> char y</span>
+<span id="cb19-36"><a href="#cb19-36" aria-hidden="true"></a></span>
+<span id="cb19-37"><a href="#cb19-37" aria-hidden="true"></a><span class="ot">parseExpression ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">PS.ParseError</span> [<span class="dt">Token</span>]</span>
+<span id="cb19-38"><a href="#cb19-38" aria-hidden="true"></a>parseExpression inp <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-39"><a href="#cb19-39" aria-hidden="true"></a>  toks <span class="ot">&lt;-</span> PS.parse (many1 (PS.try scanNumber <span class="op">&lt;|&gt;</span> scanOperator) <span class="op">&lt;*</span> eof) <span class="st">&quot;&quot;</span> inp</span>
+<span id="cb19-40"><a href="#cb19-40" aria-hidden="true"></a>  <span class="fu">return</span> <span class="op">$</span> toks <span class="op">++</span> [<span class="dt">EndTok</span>]</span>
+<span id="cb19-41"><a href="#cb19-41" aria-hidden="true"></a></span>
+<span id="cb19-42"><a href="#cb19-42" aria-hidden="true"></a></span>
+<span id="cb19-43"><a href="#cb19-43" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">Token</span> <span class="ot">=</span></span>
+<span id="cb19-44"><a href="#cb19-44" aria-hidden="true"></a>  <span class="dt">Plus</span></span>
+<span id="cb19-45"><a href="#cb19-45" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Minus</span></span>
+<span id="cb19-46"><a href="#cb19-46" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Star</span></span>
+<span id="cb19-47"><a href="#cb19-47" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Slash</span></span>
+<span id="cb19-48"><a href="#cb19-48" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Exp</span></span>
+<span id="cb19-49"><a href="#cb19-49" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">Number</span> <span class="op">!</span><span class="dt">Double</span></span>
+<span id="cb19-50"><a href="#cb19-50" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">LParen</span></span>
+<span id="cb19-51"><a href="#cb19-51" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">RParen</span></span>
+<span id="cb19-52"><a href="#cb19-52" aria-hidden="true"></a>  <span class="op">|</span> <span class="dt">EndTok</span></span>
+<span id="cb19-53"><a href="#cb19-53" aria-hidden="true"></a>  <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>)</span>
+<span id="cb19-54"><a href="#cb19-54" aria-hidden="true"></a></span>
+<span id="cb19-55"><a href="#cb19-55" aria-hidden="true"></a><span class="kw">type</span> <span class="dt">TokenS</span> <span class="ot">=</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Double</span></span>
+<span id="cb19-56"><a href="#cb19-56" aria-hidden="true"></a></span>
+<span id="cb19-57"><a href="#cb19-57" aria-hidden="true"></a><span class="ot">nextToken ::</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Token</span></span>
+<span id="cb19-58"><a href="#cb19-58" aria-hidden="true"></a>nextToken <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-59"><a href="#cb19-59" aria-hidden="true"></a>  s <span class="ot">&lt;-</span> get</span>
+<span id="cb19-60"><a href="#cb19-60" aria-hidden="true"></a>  <span class="kw">case</span> s <span class="kw">of</span></span>
+<span id="cb19-61"><a href="#cb19-61" aria-hidden="true"></a>    (x<span class="op">:</span>xs) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb19-62"><a href="#cb19-62" aria-hidden="true"></a>      put xs</span>
+<span id="cb19-63"><a href="#cb19-63" aria-hidden="true"></a>      <span class="fu">return</span> x</span>
+<span id="cb19-64"><a href="#cb19-64" aria-hidden="true"></a>    _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;Token list is empty&quot;</span></span>
+<span id="cb19-65"><a href="#cb19-65" aria-hidden="true"></a></span>
+<span id="cb19-66"><a href="#cb19-66" aria-hidden="true"></a><span class="ot">currToken ::</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Token</span></span>
+<span id="cb19-67"><a href="#cb19-67" aria-hidden="true"></a>currToken <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-68"><a href="#cb19-68" aria-hidden="true"></a>  s <span class="ot">&lt;-</span> get</span>
+<span id="cb19-69"><a href="#cb19-69" aria-hidden="true"></a>  <span class="kw">case</span> s <span class="kw">of</span></span>
+<span id="cb19-70"><a href="#cb19-70" aria-hidden="true"></a>    (x<span class="op">:</span>_) <span class="ot">-&gt;</span> <span class="fu">return</span> x</span>
+<span id="cb19-71"><a href="#cb19-71" aria-hidden="true"></a>    _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;No more tokens&quot;</span></span>
+<span id="cb19-72"><a href="#cb19-72" aria-hidden="true"></a></span>
+<span id="cb19-73"><a href="#cb19-73" aria-hidden="true"></a><span class="ot">hasToken ::</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Bool</span></span>
+<span id="cb19-74"><a href="#cb19-74" aria-hidden="true"></a>hasToken <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-75"><a href="#cb19-75" aria-hidden="true"></a>  s <span class="ot">&lt;-</span> get</span>
+<span id="cb19-76"><a href="#cb19-76" aria-hidden="true"></a>  <span class="kw">case</span> s <span class="kw">of</span></span>
+<span id="cb19-77"><a href="#cb19-77" aria-hidden="true"></a>    (_<span class="op">:</span>_) <span class="ot">-&gt;</span> <span class="fu">return</span> <span class="dt">True</span></span>
+<span id="cb19-78"><a href="#cb19-78" aria-hidden="true"></a>    [] <span class="ot">-&gt;</span> <span class="fu">return</span> <span class="dt">False</span></span>
+<span id="cb19-79"><a href="#cb19-79" aria-hidden="true"></a></span>
+<span id="cb19-80"><a href="#cb19-80" aria-hidden="true"></a></span>
+<span id="cb19-81"><a href="#cb19-81" aria-hidden="true"></a><span class="ot">nud ::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">State</span> [<span class="dt">Token</span>] <span class="dt">Double</span></span>
+<span id="cb19-82"><a href="#cb19-82" aria-hidden="true"></a>nud (<span class="dt">Number</span> x) <span class="ot">=</span> <span class="fu">return</span> x</span>
+<span id="cb19-83"><a href="#cb19-83" aria-hidden="true"></a>nud <span class="dt">Minus</span> <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-84"><a href="#cb19-84" aria-hidden="true"></a>  right <span class="ot">&lt;-</span> precedenceParser <span class="dv">100</span>  <span class="co">-- add this to prefix map</span></span>
+<span id="cb19-85"><a href="#cb19-85" aria-hidden="true"></a>  <span class="fu">return</span> <span class="op">$</span> <span class="op">-</span>right</span>
+<span id="cb19-86"><a href="#cb19-86" aria-hidden="true"></a>nud <span class="dt">LParen</span> <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-87"><a href="#cb19-87" aria-hidden="true"></a>  right <span class="ot">&lt;-</span> precedenceParser <span class="dv">0</span></span>
+<span id="cb19-88"><a href="#cb19-88" aria-hidden="true"></a>  token <span class="ot">&lt;-</span> currToken</span>
+<span id="cb19-89"><a href="#cb19-89" aria-hidden="true"></a>  <span class="kw">case</span> token <span class="kw">of</span></span>
+<span id="cb19-90"><a href="#cb19-90" aria-hidden="true"></a>    <span class="dt">RParen</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb19-91"><a href="#cb19-91" aria-hidden="true"></a>      void nextToken</span>
+<span id="cb19-92"><a href="#cb19-92" aria-hidden="true"></a>      <span class="fu">return</span> right</span>
+<span id="cb19-93"><a href="#cb19-93" aria-hidden="true"></a>    _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;unexpected token = &quot;</span> <span class="op">++</span> <span class="fu">show</span> token <span class="op">++</span> <span class="st">&quot; found.&quot;</span></span>
+<span id="cb19-94"><a href="#cb19-94" aria-hidden="true"></a>nud _ <span class="ot">=</span> <span class="fu">error</span> <span class="st">&quot;only literal supported for nud&quot;</span></span>
+<span id="cb19-95"><a href="#cb19-95" aria-hidden="true"></a></span>
+<span id="cb19-96"><a href="#cb19-96" aria-hidden="true"></a><span class="ot">infixPrecedence ::</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">Double</span></span>
+<span id="cb19-97"><a href="#cb19-97" aria-hidden="true"></a>infixPrecedence tok <span class="ot">=</span> <span class="kw">case</span> tok <span class="kw">of</span></span>
+<span id="cb19-98"><a href="#cb19-98" aria-hidden="true"></a>  <span class="dt">Number</span> _ <span class="ot">-&gt;</span> <span class="dv">0</span></span>
+<span id="cb19-99"><a href="#cb19-99" aria-hidden="true"></a>  <span class="dt">LParen</span> <span class="ot">-&gt;</span> <span class="dv">0</span></span>
+<span id="cb19-100"><a href="#cb19-100" aria-hidden="true"></a>  <span class="dt">RParen</span> <span class="ot">-&gt;</span> <span class="dv">0</span></span>
+<span id="cb19-101"><a href="#cb19-101" aria-hidden="true"></a>  <span class="dt">EndTok</span> <span class="ot">-&gt;</span> <span class="dv">0</span></span>
+<span id="cb19-102"><a href="#cb19-102" aria-hidden="true"></a>  <span class="dt">Minus</span> <span class="ot">-&gt;</span> <span class="dv">10</span></span>
+<span id="cb19-103"><a href="#cb19-103" aria-hidden="true"></a>  <span class="dt">Plus</span> <span class="ot">-&gt;</span> <span class="dv">10</span></span>
+<span id="cb19-104"><a href="#cb19-104" aria-hidden="true"></a>  <span class="dt">Star</span> <span class="ot">-&gt;</span> <span class="dv">20</span></span>
+<span id="cb19-105"><a href="#cb19-105" aria-hidden="true"></a>  <span class="dt">Slash</span> <span class="ot">-&gt;</span> <span class="dv">20</span></span>
+<span id="cb19-106"><a href="#cb19-106" aria-hidden="true"></a>  <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dv">30</span></span>
+<span id="cb19-107"><a href="#cb19-107" aria-hidden="true"></a>  _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="st">&quot;prec not defined for = &quot;</span> <span class="op">++</span> <span class="fu">show</span> tok</span>
+<span id="cb19-108"><a href="#cb19-108" aria-hidden="true"></a></span>
+<span id="cb19-109"><a href="#cb19-109" aria-hidden="true"></a><span class="ot">led ::</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">Token</span> <span class="ot">-&gt;</span> <span class="dt">TokenS</span></span>
+<span id="cb19-110"><a href="#cb19-110" aria-hidden="true"></a>led left tok <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-111"><a href="#cb19-111" aria-hidden="true"></a>  <span class="kw">case</span> tok <span class="kw">of</span></span>
+<span id="cb19-112"><a href="#cb19-112" aria-hidden="true"></a>    <span class="dt">Plus</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb19-113"><a href="#cb19-113" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> precedenceParser (infixPrecedence tok)</span>
+<span id="cb19-114"><a href="#cb19-114" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">+</span> right</span>
+<span id="cb19-115"><a href="#cb19-115" aria-hidden="true"></a>    <span class="dt">Minus</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb19-116"><a href="#cb19-116" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> precedenceParser (infixPrecedence tok)</span>
+<span id="cb19-117"><a href="#cb19-117" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">-</span> right</span>
+<span id="cb19-118"><a href="#cb19-118" aria-hidden="true"></a>    <span class="dt">Star</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb19-119"><a href="#cb19-119" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> precedenceParser (infixPrecedence tok)</span>
+<span id="cb19-120"><a href="#cb19-120" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">*</span> right</span>
+<span id="cb19-121"><a href="#cb19-121" aria-hidden="true"></a>    <span class="dt">Slash</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb19-122"><a href="#cb19-122" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> precedenceParser (infixPrecedence tok)</span>
+<span id="cb19-123"><a href="#cb19-123" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">/</span> right</span>
+<span id="cb19-124"><a href="#cb19-124" aria-hidden="true"></a>    <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb19-125"><a href="#cb19-125" aria-hidden="true"></a>      right <span class="ot">&lt;-</span> precedenceParser <span class="op">$</span> infixPrecedence tok <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb19-126"><a href="#cb19-126" aria-hidden="true"></a>      <span class="fu">return</span> <span class="op">$</span> left <span class="op">**</span> right</span>
+<span id="cb19-127"><a href="#cb19-127" aria-hidden="true"></a>    _ <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="op">$</span> <span class="fu">show</span> tok <span class="op">++</span> <span class="st">&quot;not supported&quot;</span></span>
+<span id="cb19-128"><a href="#cb19-128" aria-hidden="true"></a></span>
+<span id="cb19-129"><a href="#cb19-129" aria-hidden="true"></a></span>
+<span id="cb19-130"><a href="#cb19-130" aria-hidden="true"></a><span class="ot">precedenceParser ::</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">TokenS</span></span>
+<span id="cb19-131"><a href="#cb19-131" aria-hidden="true"></a>precedenceParser rbp <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb19-132"><a href="#cb19-132" aria-hidden="true"></a>  token <span class="ot">&lt;-</span> nextToken</span>
+<span id="cb19-133"><a href="#cb19-133" aria-hidden="true"></a>  left <span class="ot">&lt;-</span> nud token</span>
+<span id="cb19-134"><a href="#cb19-134" aria-hidden="true"></a>  nt1 <span class="ot">&lt;-</span> currToken</span>
+<span id="cb19-135"><a href="#cb19-135" aria-hidden="true"></a>  go left nt1</span>
+<span id="cb19-136"><a href="#cb19-136" aria-hidden="true"></a>  <span class="kw">where</span></span>
+<span id="cb19-137"><a href="#cb19-137" aria-hidden="true"></a>    go left' nt' <span class="ot">=</span> <span class="kw">if</span> rbp <span class="op">&lt;</span> infixPrecedence nt' <span class="kw">then</span> <span class="kw">do</span></span>
+<span id="cb19-138"><a href="#cb19-138" aria-hidden="true"></a>        void nextToken</span>
+<span id="cb19-139"><a href="#cb19-139" aria-hidden="true"></a>        left'' <span class="ot">&lt;-</span> led left' nt'</span>
+<span id="cb19-140"><a href="#cb19-140" aria-hidden="true"></a>        nt'' <span class="ot">&lt;-</span> currToken</span>
+<span id="cb19-141"><a href="#cb19-141" aria-hidden="true"></a>        go left'' nt''</span>
+<span id="cb19-142"><a href="#cb19-142" aria-hidden="true"></a>      <span class="kw">else</span> <span class="fu">return</span> left'</span>
+<span id="cb19-143"><a href="#cb19-143" aria-hidden="true"></a></span>
+<span id="cb19-144"><a href="#cb19-144" aria-hidden="true"></a><span class="co">-- Tests precedenceParser</span></span>
+<span id="cb19-145"><a href="#cb19-145" aria-hidden="true"></a></span>
+<span id="cb19-146"><a href="#cb19-146" aria-hidden="true"></a><span class="ot">evalExpression ::</span> [<span class="dt">String</span>] <span class="ot">-&gt;</span> [<span class="dt">Double</span>]</span>
+<span id="cb19-147"><a href="#cb19-147" aria-hidden="true"></a>evalExpression <span class="ot">=</span> <span class="fu">map</span> (evalState (precedenceParser <span class="dv">0</span>) <span class="op">.</span> fromRight [] <span class="op">.</span> parseExpression)</span>
+<span id="cb19-148"><a href="#cb19-148" aria-hidden="true"></a></span>
+<span id="cb19-149"><a href="#cb19-149" aria-hidden="true"></a>evalAll <span class="ot">=</span> evalExpression [</span>
+<span id="cb19-150"><a href="#cb19-150" aria-hidden="true"></a>  <span class="st">&quot;1+2+3+4&quot;</span>,</span>
+<span id="cb19-151"><a href="#cb19-151" aria-hidden="true"></a>  <span class="st">&quot;10-2+1&quot;</span>,</span>
+<span id="cb19-152"><a href="#cb19-152" aria-hidden="true"></a>  <span class="st">&quot;10-5-1&quot;</span>,</span>
+<span id="cb19-153"><a href="#cb19-153" aria-hidden="true"></a>  <span class="st">&quot;10+2*3-8&quot;</span>,</span>
+<span id="cb19-154"><a href="#cb19-154" aria-hidden="true"></a>  <span class="st">&quot;3^2^3&quot;</span>,</span>
+<span id="cb19-155"><a href="#cb19-155" aria-hidden="true"></a>  <span class="st">&quot;(10+2)*3-8&quot;</span></span>
+<span id="cb19-156"><a href="#cb19-156" aria-hidden="true"></a>  ]</span></code></pre></div>
+<h1 id="conclusion">Conclusion</h1>
+<p>In this post, I have simplified the implementation to help in exposition. If you look at some other examples of Pratt parsers, you will notice the code builds up a table of operators mapped to their respective <code>prefix</code> and <code>infix</code> handling functions along with their precedence. While that code is flexible, but the keys in the mapping end up being strings. In the implementation we have, we get exhaustive-pattern matching gaurantees in both <code>nud</code> and <code>led</code> functions. The table based approach does not provide you this gaurantee.</p>
+<p>In future posts, I will be showing how we can use a similar implementation while implementing the virtual VM for <code>lox</code> in Haskell.</p>
+<h1 id="references">References</h1>
+<p><a href="https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing">Top-Down operator precedence parsing</a></p>
+<p><a href="https://github.com/tdop/tdop.github.io">Link to Original TDOP paper</a></p>
+<p><a href="https://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/">Pratt Parsers: Expression Parsing Made Easy</a></p>
+    </section>
+  </article>
+</section>
+
+        </main>
+    <footer>
+        <hr>
+        <div class="social">
+          <ul>
+            <li><a href="https://github.com/gdevanla/">GitHub</a></li>
+            <li><a href="https://twitter.com/grdvnl">Twitter</a></li>
+            <li><a href="https://www.linkedin.com/in/grdvnl/">LinkedIn</a></li>
+          </ul>
+          <ul>
+              <li>
+                Site proudly generated by
+                <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+                </li>
+            </ul>
+        </div><!-- /.social -->
+    </footer>
+    </body>
+</html>
