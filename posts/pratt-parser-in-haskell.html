@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta http-equiv="x-ua-compatible" content="ie=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>blog <| code - A Simplistic Implementation of Pratt Parser in Haskell</title>
+        <title>blog <| code - A Simple Implementation of Pratt Parser in Haskell</title>
         <!--web fonts-->
         <!-- <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css"> -->
         <!-- <link href="https://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css"> -->
@@ -60,7 +60,7 @@
             <section id="content" class="body">
   <article>
     <header>
-      <h1>A Simplistic Implementation of Pratt Parser in Haskell</h1>
+      <h1>A Simple Implementation of Pratt Parser in Haskell</h1>
       <div class="extra-info">
         <abbr class="published" title="{{ article.date.isoformat() }}">2021-10-06</abbr>
       </div><!-- /.entry-content -->
@@ -304,10 +304,8 @@
 <span id="cb16-15"><a href="#cb16-15" aria-hidden="true"></a>        go left'' nt''</span>
 <span id="cb16-16"><a href="#cb16-16" aria-hidden="true"></a>      <span class="kw">else</span> <span class="fu">return</span> left'</span></code></pre></div>
 <p>Now, lets look at this function closely. The function accepts the <code>precedence</code> level as its argument. Here are the steps, the function follows to parse an expression like `1 + 2 * 3 + 4.</p>
-<ol start="0" type="1">
-<li>The function is called with <code>0</code> and a <code>token</code> state, that looks like <code>[Number 1, Plus, Number 2, Star, Number 3, Plus, Number 4]</code></li>
-</ol>
-<ol start="2" type="a">
+<ol type="a">
+<li><p>The function is called with <code>0</code> and a <code>token</code> state, that looks like <code>[Number 1, Plus, Number 2, Star, Number 3, Plus, Number 4]</code></p></li>
 <li><p><code>nextToken</code>, updates the <code>token</code> state to <code>[Plus, Number 2, Star, Number 3, Plus, Number 4]</code> and binds <code>1</code> to <code>token</code>.</p></li>
 <li><p>We call <code>nud</code> on <code>token</code> and this gives us the value of the <code>left</code> expression of the operator.</p></li>
 <li><p>Now we need to decide whether to just return or evaluate the deeper sub-tree based on precedence level. Remember we start with <code>rbp=0</code>. Since <code>rbp</code> is less the precedence level of <code>+</code>, which is our current token (<code>nt1 &lt;- currToken</code>), we recurse with the helper function <code>go</code>. In the <code>go</code> function, we update the <code>token</code> state to <code>[Number 2, Star, Number 3, Plus, Number 4]</code>, and then call the <code>led</code> function. If you recall, the <code>led</code> function accepts an <code>operator</code> token and evaluates the token at the head of the <code>Token</code> list.</p></li>
