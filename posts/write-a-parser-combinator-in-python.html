@@ -67,7 +67,7 @@
     </header>
     <section>
         <h1 id="parser-combinators">Parser Combinators</h1>
-<p>A parser can be viewed as a function that parses some input and produces a transformed structure based on this input. Such parsers can be combined to extend their functionality. These functions that are used to combined these parsers are called <code>parser combinators</code>.</p>
+<p>A parser can be viewed as a function that parses some input and produces a transformed structure based on this input. Such parsers can be combined to extend their functionality. These functions that are used to combined these parsers are called <a href="https://en.wikipedia.org/wiki/Parser_combinator"><code>Parser Combinators</code></a></p>
 <p>Parser combinators are higher-order functions that combine parsers and other parser combinators to produce another higher-level parser. The idea behind parser combinators are that one starts with a small definitions of parsers and combine these through different combinator functions that extends their functionality.</p>
 <p>In this post, we will learn to build a minimal parser combinator library from scratch. The functions provided here can be used to extend the libary with more parser combinators.</p>
 <p>Let’s first get started with some imports.</p>
