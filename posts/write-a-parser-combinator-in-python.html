@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>blog <| code - Minimal Parser Combinator in Python</title>
+        <!--web fonts-->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css"> -->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Belgrano" rel="stylesheet" type="text/css"> -->
+
+        <link rel="stylesheet" href="../css/main.css" type="text/css" />
+        <!-- <link rel="stylesheet" href="/css/default.css" type="test/css"/> -->
+        <!-- <link rel="stylesheet" href="/css/syntax.css" type="text/css" /> -->
+        <link rel="stylesheet" href="../css/tango.css" type="text/css" />
+        <script type="text/javascript">
+
+               var _gaq = _gaq || [];
+                 _gaq.push(['_setAccount', 'UA-45968778-1']);
+                 _gaq.push(['_trackPageview']);
+
+                 (function() {
+                   var ga = document.createElement('script'); ga.type =
+                   'text/javascript'; ga.async = true;
+                   ga.src = ('https:' == document.location.protocol ?
+                   'https://ssl' : 'http://www') +
+                   '.google-analytics.com/ga.js';
+                   var s = document.getElementsByTagName('script')[0];
+                   s.parentNode.insertBefore(ga, s);
+                 })();
+
+               </script>
+
+        <script type="text/javascript">
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new
+              Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-45968778-2', 'gdevanla.github.io');
+              ga('send', 'pageview');
+
+        </script>
+
+    </head>
+    <body>
+      <header>
+        <span><a class="title" href="../index.html"><h1>blog &lt| code </h1></a></span>
+        <nav>
+          <ul>
+            <li><a href="../index.html">posts</a></li>
+            <li><a href="../archive.html">archives</a></li>
+            <li><a href="../pages/books.html">RYAS</a></li>
+            <li><a href="../about.html">about</a></li>
+          </ul>
+        </nav>
+      </header>
+        <main role="main">
+            <section id="content" class="body">
+  <article>
+    <header>
+      <h1>Minimal Parser Combinator in Python</h1>
+      <div class="extra-info">
+        <abbr class="published" title="{{ article.date.isoformat() }}">2021-10-26</abbr>
+      </div><!-- /.entry-content -->
+    </header>
+    <section>
+        <h1 id="parser-combinators">Parser Combinators</h1>
+<p>A parser can be viewed as a function that parses some input and produces a transformed structure based on this input. Such parsers can be combined to extend their functionality. These functions that are used to combined these parsers are called <code>parser combinators</code>.</p>
+<p>Parser combinators are higher-order functions that combine parsers and other parser combinators to produce another higher-level parser. The idea behind parser combinators are that one starts with a small definitions of parsers and combine these through different combinator functions that extends their functionality.</p>
+<p>In this post, we will learn to build a minimal parser combinator library from scratch. The functions provided here can be used to extend the libary with more parser combinators.</p>
+<p>Let’s first get started with some imports.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="co"># initial imports</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="im">import</span> operator</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="im">import</span> typing <span class="im">as</span> tp</span></code></pre></div>
+<h1 id="structure-of-a-parser">Structure of a Parser</h1>
+<p>A parser’s primary functionality at the highest level is to accept some input (say a <code>str</code>), and produce some <code>structured</code> object. This structured object could be a list of lexical tokens, an AST or may be a fully evaluated value. With that in mind, we can model the type of parser as follows:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>ParserP <span class="op">=</span> tp.Callable[[<span class="bu">str</span>], tp.Tuple[tp.Any, <span class="bu">str</span>]]</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a><span class="co"># A simple parser</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>example_parser <span class="op">=</span> <span class="kw">lambda</span> s: (s[<span class="dv">0</span>], s[<span class="dv">1</span>:])</span></code></pre></div>
+<p>Notice the <code>parser</code> defined above is a function that takes as input a <code>str</code> and returns a tuple. The first element of tuple is the <code>input</code> that is consumed by the parser and the second element is the remaining <code>input</code> the parser has not consumed yet. The type of first element in the output could be a lexical token, an AST node or any structured object. For our purpose, we will consider the output to either be a <code>str</code> or a <code>tuple</code> in some cases, as you will see below.</p>
+<p>The <code>example_parser</code> listed above just extract the first element of input and returns a <code>tuple</code> as output.</p>
+<h1 id="build-small-parsers">Build Small Parsers</h1>
+<p>Let’s use this model of the parser, to define a few parsers, that do simple things.</p>
+<p>First, lets add a helper class to capture exceptions and also a <code>parse</code> function that will <code>run</code> the parsers we will be building in this post.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">class</span> ParserError(<span class="pp">Exception</span>):</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, msg, content):</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>(<span class="ss">f&quot;</span><span class="sc">{</span>msg<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>content<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a><span class="co"># parse function here, can be used to run the parsers/parser combinators that we will build below.</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a><span class="co">#  Some helper functions</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a><span class="kw">def</span> parse(p: ParserP, s: <span class="bu">str</span>) <span class="op">-&gt;</span> tp.Tuple[tp.Any, <span class="bu">str</span>]:</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>    (a, s) <span class="op">=</span> p(s)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>    <span class="cf">return</span> (a, s)</span></code></pre></div>
+<p>First we build a simple parser, which just consumes the first element of its input.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="kw">def</span> anyChar() <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a>        <span class="cf">return</span> (s[<span class="dv">0</span>], s[<span class="dv">1</span>:])</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>Note that the above parser, returns a <code>func</code> whose type is <code>tp.Callable[[str], tp.Tuple[tp.Any, str]]</code>. This is a example of a function that constructs a <code>parser</code>. This will be a recurring theme of this post, that is functions returning a fully constructed parsers.</p>
+<p>And we can test this function as follows:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>In [<span class="dv">363</span>]: parse(anyChar(), <span class="st">'hello world'</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a>Out[<span class="dv">363</span>]: (<span class="st">'h'</span>, <span class="st">'ello world'</span>)</span></code></pre></div>
+<p>Instead of any character, if we wanted to consume a particular character as the input, then we could build another parser as follows:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="kw">def</span> oneChar(c) <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a>        <span class="cf">if</span> s[<span class="dv">0</span>] <span class="op">==</span> c:</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a>            <span class="cf">return</span> (s[<span class="dv">0</span>], s[<span class="dv">1</span>:])</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a>        <span class="cf">raise</span> ParserError(<span class="ss">f&quot;Unexpected </span><span class="sc">{s</span>[<span class="dv">0</span>]<span class="sc">}</span><span class="ss">, expecting </span><span class="sc">{c}</span><span class="ss">&quot;</span>, s)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>And here are the results of running this parser</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>In [<span class="dv">364</span>]: parse(oneChar(<span class="st">'h'</span>), <span class="st">'hello world'</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a>Out[<span class="dv">364</span>]: (<span class="st">'h'</span>, <span class="st">'ello world'</span>)</span></code></pre></div>
+<p>And, if we want to just parse a <code>digit</code>, then we can build another parser</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="kw">def</span> anyDigit() <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>        <span class="cf">if</span> s[<span class="dv">0</span>].isdigit():</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a>            <span class="cf">return</span> (s[<span class="dv">0</span>], s[<span class="dv">1</span>:])</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a>        <span class="cf">raise</span> ParserError(<span class="ss">f&quot;Expected digit, got </span><span class="sc">{s</span>[<span class="dv">0</span>]<span class="sc">}</span><span class="ss">&quot;</span>, s)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>Running this would give used</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a>In [<span class="dv">366</span>]: parse(anyDigit(), <span class="st">'123'</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a>Out[<span class="dv">366</span>]: (<span class="st">'1'</span>, <span class="st">'23'</span>)</span></code></pre></div>
+<h1 id="abstracting-away-common-functionality">Abstracting away common functionality</h1>
+<p>You will notice that the last two parsers we built perform a common operation where they check if the <code>first</code> character satisfies a certain condition before returning the result. We should be able extract this functionality into its own parser. We can create a function called <code>satisfy</code> that will return a parser. The function takes a <code>predicate_function</code> that needs to be satisfied if the input has to be consumer. If not, then the function throws an exception. You will notice that we will use this exception when we want to choose between multiple parsers results.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a><span class="co"># Generic Predicate Parser</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a><span class="kw">def</span> satisfy(pred_function: tp.Callable[[<span class="st">&quot;char&quot;</span>], <span class="bu">bool</span>]) <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a>        <span class="cf">if</span> <span class="kw">not</span> s:</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a>            <span class="cf">raise</span> ParserError(<span class="st">&quot;Empty string&quot;</span>, <span class="st">&quot;&quot;</span>)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a>        <span class="cf">if</span> pred_function(s[<span class="dv">0</span>]):</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a>            <span class="cf">return</span> (s[<span class="dv">0</span>], s[<span class="dv">1</span>:])</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a>        <span class="cf">raise</span> ParserError(<span class="ss">f&quot;Unexpected condition&quot;</span>, s)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true"></a></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>And now, we can update our earlier parsers to use this new defintion:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="kw">def</span> oneCharP(c) <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a>    <span class="cf">return</span> satisfy(<span class="kw">lambda</span> c1: c <span class="op">==</span> c1)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true"></a><span class="kw">def</span> anyDigitP() <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true"></a>    <span class="cf">return</span> satisfy(<span class="kw">lambda</span> c: c.isdigit())</span></code></pre></div>
+<h1 id="time-to-build-our-first-parser-combinator">Time to build our first parser combinator</h1>
+<p>The <code>oneCharP</code> function parses one character out of the input. We could combine these parsers to consume more input. We can <code>compose</code> 2 parsers to obtain a new parser using the <code>compose</code> function.</p>
+<p>First lets defined the <code>compose</code> function:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="kw">def</span> compose(p1: ParserP, p2: ParserP) <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a>        (a, s1) <span class="op">=</span> parse(p1, s)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>        (b, s2) <span class="op">=</span> parse(p2, s1)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a>        <span class="cf">return</span> ((a, b), s2)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>Notice, the structure of the compose function. We first run the parser <code>p1</code>, capture the new state <code>s1</code> and use that state to parse using <code>p2</code>. The parser when called returns the two captured tokens <code>a</code> and <code>b</code>. Note, here that the <code>parser</code> returns <code>tuple(a, b)</code>. This can vary based on the parer being built. Now, lets use the <code>compose</code> function.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>In [<span class="dv">369</span>]: hp <span class="op">=</span> oneChar(<span class="st">'h'</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>     ...: ep <span class="op">=</span> oneChar(<span class="st">'e'</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a>     ...: parse(compose(hp, ep), <span class="st">&quot;hello world&quot;</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>     ...:</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>     ...:</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>Out[<span class="dv">369</span>]: ((<span class="st">'h'</span>, <span class="st">'e'</span>), <span class="st">'llo world'</span>)</span></code></pre></div>
+<p>The <code>compose</code> function is an example of a parser combinator. It accepts two parsers and returns another parser.</p>
+<h1 id="a-choice-parser-combinator">A <code>choice</code> parser combinator</h1>
+<p>There will be scenarios where we have two parsers, and we have to choose between one of them. For example, if we want to consume either a <code>h</code> or <code>H</code> as first character in the input, we could use the <code>choice</code> parser combinator.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="co"># A choice parser combinator</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a><span class="kw">def</span> choice(p1: ParserP, p2: ParserP) <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true"></a>        <span class="cf">try</span>:</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true"></a>            <span class="cf">return</span> p1(s)</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true"></a>        <span class="cf">except</span> ParserError:</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true"></a>            <span class="cf">return</span> p2(s)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>The <code>choice</code> parser tries the first parser <code>p1</code> and if that parser raises an exception (remember the <code>satisfy</code> function throws a <code>ParserError</code>), the second parser <code>p2</code> is tried. Here is an example of that usage.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a>In [<span class="dv">371</span>]: hp <span class="op">=</span> oneChar(<span class="st">'h'</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true"></a>     ...: ep <span class="op">=</span> oneChar(<span class="st">'H'</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true"></a>     ...: <span class="bu">print</span>(parse(choice(hp, ep), <span class="st">&quot;hello world&quot;</span>))</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true"></a>     ...: <span class="bu">print</span>(parse(choice(hp, ep), <span class="st">&quot;Hello world&quot;</span>))</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true"></a>     ...:</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true"></a>     ...:</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true"></a>(<span class="st">'h'</span>, <span class="st">'ello world'</span>)</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true"></a>(<span class="st">'H'</span>, <span class="st">'ello world'</span>)</span></code></pre></div>
+<h1 id="using-the-parser-combinators-to-parse-simple-expression">Using the parser combinators to parse simple expression</h1>
+<p>Using the above parser combinators, we can build a simple expression parser that can parse an expression like <code>1 + 2</code> or <code>1 - 2 + 3</code> etc.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="co"># def expression():</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a><span class="co">#   parse digit  - we can use anyDigit()</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a><span class="co">#   parse operator  -  we need to be able to choose different options</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true"></a><span class="co">#   parse digit  - parse the next digit</span></span></code></pre></div>
+<p>To support this expression, we also need a parser to parse the math operators (<code>+</code>, <code>-</code>, etc). Note,we are able to use <code>mathOp</code> (a parser) to build a more powerful parser, using the parser combinator <code>mathOpP</code>. The <code>mathOpP</code> parser combinator uses the <code>choice</code> parser combinator to produce a new parser! This is an example of using a multiple parser combinators to produce a new parser.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="co"># now lets use choiceP</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a><span class="kw">def</span> mathOp(op):</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true"></a>    <span class="cf">return</span> satisfy(<span class="kw">lambda</span> c: c <span class="op">==</span> op)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true"></a><span class="kw">def</span> mathOpP() <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true"></a>    plus <span class="op">=</span> mathOp(<span class="st">&quot;+&quot;</span>)</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true"></a>    minus <span class="op">=</span> mathOp(<span class="st">&quot;-&quot;</span>)</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true"></a>    mult <span class="op">=</span> mathOp(<span class="st">&quot;*&quot;</span>)</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true"></a>    div <span class="op">=</span> mathOp(<span class="st">&quot;/&quot;</span>)</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true"></a></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true"></a>    <span class="cf">return</span> choice(plus, choice(minus, choice(mult, minus)))</span></code></pre></div>
+<p>We will make our first attempt in implementing the <code>expression</code> parser.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="kw">def</span> expression_does_not_work():</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true"></a>        (digit1, s1) <span class="op">=</span> parse(anyDigitP(), s)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true"></a>        (op, s2) <span class="op">=</span> parse(mathOpP(), s1)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true"></a>        (digit2, s3) <span class="op">=</span> parse(anyDigitP(), s2) <span class="co"># this does not work</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true"></a></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true"></a>        <span class="cf">return</span> ((<span class="bu">int</span>(digit1), op, <span class="bu">int</span>(digit2)), s3)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true"></a></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>Running this, we notice that <code>+</code> operator needs to be converted to a python callable like (<code>operator.add</code>) for us to be able to use this.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a>In [<span class="dv">372</span>]: parse(expression_does_not_work(), <span class="st">&quot;1+2&quot;</span>)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true"></a>Out[<span class="dv">372</span>]: ((<span class="dv">1</span>, <span class="st">'+'</span>, <span class="dv">2</span>), <span class="st">''</span>)</span></code></pre></div>
+<p>The parsed input from <code>mathOpP</code> is not available for us to perform the transformation. One option is for <code>mathOp</code> to do the transformation. But, let’s assume that is not possible. Let’s assume the produced output from <code>mathOp</code> needs to be passed to another sequence of parsers before a decision can be made. This kind of scenario happens often, where subsequent parsers need to construct different parsers based on the earlier parsed input. In that case, we need to use the <code>bind</code> operation to produce the next parser.</p>
+<h1 id="introduce-the-bind-function">Introduce the <code>bind</code> function</h1>
+<div class="sourceCode" id="cb20"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true"></a>ParserF <span class="op">=</span> tp.Callable[[tp.Any], ParserP]</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true"></a><span class="kw">def</span> bind(p1: ParserP, pf: ParserF) <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true"></a>        (a, s1) <span class="op">=</span> parse(p1, s)</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true"></a>        <span class="co"># call the passed in function to get the next parser `p2`. This function take an argument that was produced by the first parser `p1`</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true"></a>        p2 <span class="op">=</span> pf(a)</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true"></a>        (b, s2) <span class="op">=</span> parse(p2, s1)</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true"></a>        <span class="cf">return</span> (b, s2)</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true"></a></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>The <code>bind</code> function is different from the compose function. The two parsers that were passed to the <code>compose</code> function only depended on the string that is being consumed. The second parser passed to compose just takes as argument the unconsumed string from the first parser. But, this is slightly different with the <code>bind</code> function. The second argument passed to the <code>bind</code> function, first takes an input the output produced from the previous parser and produces a new parser. Then, we run the next parser. This is an important distinction. This helps parsers, that need to branch out and make decisions based on the <code>context</code> (that is, based on result of previous parser).</p>
+<p>Below, you will notice how we can use the <code>bind</code> function. The output of the <code>mathOp</code> is passed to another function that returns a parser, that when called returns the <code>add</code> function along with the unconsumed state <code>s</code>.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a><span class="kw">def</span> mathOpP() <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true"></a>    <span class="kw">def</span> f(op):</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true"></a>        <span class="cf">if</span> op <span class="op">==</span> <span class="st">&quot;+&quot;</span>:</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true"></a>            <span class="cf">return</span> operator.add</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true"></a>        <span class="cf">elif</span> op <span class="op">==</span> <span class="st">&quot;-&quot;</span>:</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true"></a>            <span class="cf">return</span> operator.sub</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true"></a>        <span class="cf">elif</span> op <span class="op">==</span> <span class="st">&quot;*&quot;</span>:</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true"></a>            <span class="cf">return</span> operator.mul</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true"></a>        <span class="cf">elif</span> op <span class="op">==</span> <span class="st">&quot;/&quot;</span>:</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true"></a>            <span class="cf">return</span> operator.floordiv</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true"></a></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true"></a>    plus <span class="op">=</span> bind(mathOp(<span class="st">&quot;+&quot;</span>), <span class="kw">lambda</span> a: <span class="kw">lambda</span> s: (f(a), s))</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true"></a>    minus <span class="op">=</span> bind(mathOp(<span class="st">&quot;-&quot;</span>), <span class="kw">lambda</span> a: <span class="kw">lambda</span> s: (f(a), s))</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true"></a>    mult <span class="op">=</span> bind(mathOp(<span class="st">&quot;*&quot;</span>), <span class="kw">lambda</span> a: <span class="kw">lambda</span> s: (f(a), s))</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true"></a>    div <span class="op">=</span> bind(mathOp(<span class="st">&quot;/&quot;</span>), <span class="kw">lambda</span> a: <span class="kw">lambda</span> s: (f(a), s))</span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true"></a></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true"></a>    <span class="cf">return</span> choice(plus, choice(minus, choice(mult, div)))</span></code></pre></div>
+<p>Now the <code>expression</code> function works and we can <code>apply</code> the <code>op</code> function on the two digits.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true"></a><span class="co"># need a way to recurse</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true"></a><span class="kw">def</span> expression_or_digit():</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true"></a>    <span class="cf">return</span> choiceP(expression_2(), anyDigitP())</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true"></a></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true"></a><span class="kw">def</span> expression_2():</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true"></a>        (digit1, s1) <span class="op">=</span> parse(anyDigitP(), s)</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true"></a>        (op, s2) <span class="op">=</span> parse(mathOpP(), s1)</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true"></a>        (digit2, s3) <span class="op">=</span> parse(expression_or_digit(), s2)</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true"></a>        <span class="cf">return</span> (op(<span class="bu">int</span>(digit1), <span class="bu">int</span>(digit2)), s3)</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true"></a></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>Notice that we also need a helper function so that we can recurse across multiple operands.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a>In [<span class="dv">375</span>]: parse(expression_or_digit(), <span class="st">&quot;1+2+5&quot;</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true"></a>Out[<span class="dv">375</span>]: (<span class="dv">8</span>, <span class="st">''</span>)</span></code></pre></div>
+<p>Note, that this parser does not respect precedence and associativity. We need to build some more machinery to get that right. That will be out of scope of this post.</p>
+<h1 id="revisiting-the-strp-function.">Revisiting the <code>strP</code> function.</h1>
+<p>Now that we have the <code>bind</code> function defined, we can use that function to parse a string. Remember, the earlier version of this function was producing a nested tuple.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a><span class="co"># Parse a string</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true"></a><span class="kw">def</span> strP1(es: <span class="bu">str</span>) <span class="op">-&gt;</span> ParserP:</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true"></a>    <span class="kw">def</span> f2(c):</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true"></a>        <span class="kw">def</span> f(x):</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true"></a>            f1 <span class="op">=</span> <span class="kw">lambda</span> xs: <span class="kw">lambda</span> s: (x <span class="op">+</span> xs, s)</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true"></a>            <span class="cf">return</span> bind(oneCharP(c), f1)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true"></a>        <span class="cf">return</span> f</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true"></a></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true"></a>        p <span class="op">=</span> oneCharP(es[<span class="dv">0</span>])</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true"></a>        <span class="cf">for</span> c <span class="kw">in</span> es[<span class="dv">1</span>:]:</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true"></a>            p <span class="op">=</span> bind(p, f2(c))</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true"></a>        <span class="cf">return</span> p(s)</span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true"></a></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<p>For the reader, here is another example of a parser combinator, that can apply a <code>parser</code> zero or more times.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true"></a><span class="co"># Another simple combinator</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true"></a><span class="kw">def</span> many1(p: ParserP):</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true"></a>    <span class="kw">def</span> func(s):</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true"></a>        result <span class="op">=</span> []</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true"></a>        <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true"></a>            <span class="cf">try</span>:</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true"></a>                (a, s) <span class="op">=</span> parse(p, s)</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true"></a>                result.append(a)</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true"></a>                <span class="cf">if</span> <span class="kw">not</span> s:</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true"></a>                    <span class="cf">break</span></span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true"></a>            <span class="cf">except</span> ParserError:</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true"></a>                <span class="cf">break</span></span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true"></a>        <span class="cf">return</span> (<span class="st">&quot;&quot;</span>.join(result), s)</span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true"></a></span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true"></a>    <span class="cf">return</span> func</span></code></pre></div>
+<h1 id="conclusion">Conclusion</h1>
+<p>In this post, I have tried to cover some very basic concepts that make the parser combinators work. We built the basic buildings blocks that allow us to compose many more parsers. I did leave out the implementation of a more robust expression parser. I hope to refine that in future posts.</p>
+    </section>
+  </article>
+</section>
+
+        </main>
+    <footer>
+        <hr>
+        <div class="social">
+          <ul>
+            <li><a href="https://github.com/gdevanla/">GitHub</a></li>
+            <li><a href="https://twitter.com/grdvnl">Twitter</a></li>
+            <li><a href="https://www.linkedin.com/in/grdvnl/">LinkedIn</a></li>
+          </ul>
+          <ul>
+              <li>
+                Site proudly generated by
+                <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+                </li>
+            </ul>
+        </div><!-- /.social -->
+    </footer>
+    </body>
+</html>
